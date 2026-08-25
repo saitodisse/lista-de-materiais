@@ -29,8 +29,10 @@ function renderProductsRoute(initialEntry: string, onUrlUpdate?: OnUrlUpdateFunc
   const rootRoute = createRootRoute({ component: () => <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}><Outlet /></NuqsTestingAdapter> })
   const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos', component: ProductsPage })
   const productRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode', component: ProductDetailPage })
+  const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas', component: () => null })
+  const listRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas/$listId', component: () => null })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([productsRoute, productRoute]),
+    routeTree: rootRoute.addChildren([productsRoute, productRoute, listsRoute, listRoute]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
 
@@ -157,6 +159,19 @@ describe('consulta de Produtos', () => {
     expect(screen.getByRole('button', { name: 'Excluir' }).closest('.danger-zone')).toBeNull()
   })
 
+  it('lista e vincula as dependências que bloqueiam a exclusão', async () => {
+    await db.products.add({ ...massa, id: 'pao-integral', productCode: 'pao-integral', name: 'Pão integral', category: 'p', recipe: [{ id: massa.productCode, quantity: 1 }] })
+    await db.materialLists.add({ id: 'lista-compras', name: 'Compras da semana', createdAt: massa.createdAt, updatedAt: massa.updatedAt })
+    await db.materialListEntries.add({ listId: 'lista-compras', productCode: massa.productCode, quantity: 2 })
+    renderProductsRoute('/produtos/massa-integral')
+
+    const warning = await screen.findByRole('heading', { name: 'Remover Produto' })
+    const dangerZone = warning.closest('section')!
+    expect(within(dangerZone).getByRole('link', { name: 'Pão integral' })).toHaveAttribute('href', '/produtos/pao-integral')
+    expect(within(dangerZone).getByRole('link', { name: 'Compras da semana' })).toHaveAttribute('href', '/listas/lista-compras')
+    expect(screen.getByRole('button', { name: 'Excluir' })).toBeDisabled()
+  })
+
   it('preserva as quebras de linha de observações e modo de preparo', async () => {
     await db.products.put({
       ...massa,
@@ -172,7 +187,10 @@ describe('consulta de Produtos', () => {
     expect(preparation.tagName).toBe('PRE')
   })
 
-  it('mostra a categoria como a primeira coluna de cada componente da Receita', async () => {
+  it('mostra a árvore completa da Receita e recalcula tudo pela quantidade simulada', async () => {
+    const user = userEvent.setup()
+    await db.products.put({ ...massa, recipe: [{ id: 'farinha', quantity: 0.5 }], purchaseQuoteValue: null })
+    await db.products.add({ ...massa, id: 'farinha', productCode: 'farinha', name: 'Farinha', category: 'm', unit: 'KG', purchaseQuoteValue: 4 })
     await db.products.add({
       ...massa,
       id: 'pizza-de-mucarela',
@@ -180,23 +198,42 @@ describe('consulta de Produtos', () => {
       name: 'Pizza de muçarela',
       category: 'u',
       unit: 'UN',
-      recipe: [{ id: massa.productCode, quantity: 1 }],
+      purchaseQuoteValue: null,
+      recipe: [{ id: massa.productCode, quantity: 2 }],
     })
     renderProductsRoute('/produtos/pizza-de-mucarela')
 
-    const table = await screen.findByRole('table', { name: 'Componentes da Receita' })
-    const component = within(table).getByRole('link', { name: 'Massa integral' }).closest('tr')
+    const table = await screen.findByRole('table', { name: 'Árvore calculada da Receita' })
 
     expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-      'Tipo',
       'Produto',
-      'Código',
       'Quantidade',
+      'Custo',
     ])
-    expect(component?.querySelector('[data-column="component-category"]')).toHaveAttribute('aria-label', 'Semi-acabado')
-    expect(component?.querySelector('[data-column="component-category"]')).toHaveAttribute('title', 'Semi-acabado')
-    expect(component?.querySelector('.category-mark')).toHaveAttribute('data-category', 's')
-    expect(within(table).getByRole('columnheader', { name: 'Código' })).toHaveAttribute('data-column', 'component-code')
-    expect(within(component!).getByText('1 KG').closest('td')).toHaveClass('recipe-component-quantity')
+    expect(within(table).getByRole('link', { name: 'Farinha' })).toBeInTheDocument()
+    expect(screen.getAllByText(/R\$\s*4,00/)).toHaveLength(3)
+    expect(screen.getByRole('button', { name: 'Árvore completa' })).toHaveAttribute('aria-pressed', 'true')
+
+    const rootQuantity = screen.getByRole('spinbutton', { name: 'Quantidade simulada de Pizza de muçarela' }) as HTMLInputElement
+    await user.click(rootQuantity)
+    await waitFor(() => {
+      expect(rootQuantity.selectionStart).toBe(0)
+      expect(rootQuantity.selectionEnd).toBe(rootQuantity.value.length)
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Uma camada' }))
+    expect(screen.getByRole('button', { name: 'Uma camada' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(table).queryByRole('link', { name: 'Farinha' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Árvore completa' }))
+    expect(within(table).getByRole('link', { name: 'Farinha' })).toBeInTheDocument()
+
+    const massQuantity = screen.getByRole('spinbutton', { name: 'Quantidade simulada de Massa integral' })
+    await user.clear(massQuantity)
+    await user.type(massQuantity, '3.123456')
+
+    expect(massQuantity).toHaveValue('3.12346')
+    expect(screen.getByRole('spinbutton', { name: 'Quantidade simulada de Pizza de muçarela' })).toHaveValue('1.56173')
+    expect(screen.getAllByText(/R\$\s*6,25/)).toHaveLength(3)
+    expect((await db.products.get('pizza-de-mucarela'))?.recipe).toEqual([{ id: massa.productCode, quantity: 2 }])
   })
 })

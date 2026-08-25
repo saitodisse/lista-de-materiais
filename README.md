@@ -33,7 +33,7 @@ pnpm install
 pnpm dev
 ```
 
-O servidor de desenvolvimento usa `0.0.0.0:5174`, acessível em `http://localhost:5174`. A origem é propositalmente diferente do preview PWA: assim, um service worker do build não intercepta módulos do Vite.
+O servidor de desenvolvimento usa `0.0.0.0:5177`, acessível em `http://localhost:5177`. A origem é propositalmente diferente do preview PWA: assim, um service worker do build não intercepta módulos do Vite.
 
 ```sh
 pnpm test

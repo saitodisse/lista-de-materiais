@@ -18,6 +18,25 @@ export interface BomCalculation {
   totalSaleValue: number | null
 }
 
+export function calculateProductTree(products: ProductRecord[], productCode: string, initialQuantity = 1): ITreeNode {
+  if (!Number.isFinite(initialQuantity) || initialQuantity <= 0) {
+    throw new Error('A quantidade da simulação deve ser maior que zero.')
+  }
+  const catalogue = productMap(products)
+  if (!catalogue[productCode]) {
+    throw new Error(`O Produto “${productCode}” não existe no catálogo.`)
+  }
+  const root = new MaterialsTreeBuilder({
+    productsList: catalogue,
+    productCode,
+    initialQuantity,
+  }).build()[productCode]
+  if (!root) {
+    throw new Error(`Não foi possível construir a BOM de “${productCode}”.`)
+  }
+  return root.toObject()
+}
+
 function terminalNodes(node: ITreeNode): ITreeNode[] {
   const children = Object.values(node.children ?? {})
   return children.length === 0 ? [node] : children.flatMap(terminalNodes)

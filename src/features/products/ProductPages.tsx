@@ -6,6 +6,7 @@ import { categoryName, formatCurrency, unitName } from '../../components/format'
 import { EmptyState, ErrorNotice, PageHeader } from '../../components/Page'
 import { db, deleteProduct, getProductDependencies, saveProduct } from '../../db/database'
 import { categoryOptions, ProductDependencyError, type ProductDependencies, type ProductRecord } from '../../domain/catalog'
+import { ProductBomTree } from '../bom/ProductBomTree'
 import { ProductForm } from './ProductForm'
 import { useProductFilters } from './useProductFilters'
 import { useProductListView } from './useProductListView'
@@ -119,7 +120,6 @@ export function ProductDetailPage() {
   if (!result) return <p className="loading-state">Lendo a ficha local…</p>
   if (!result.product || !result.dependencies) return <div className="page"><PageHeader title="Produto não encontrado" backTo="/produtos" /><ErrorNotice>Esse código não existe neste aparelho.</ErrorNotice></div>
   const { product, dependencies, products } = result
-  const byCode = new Map(products.map((item) => [item.productCode, item]))
   const canDelete = dependencies.recipes.length === 0 && dependencies.lists.length === 0
   const deleteCurrent = async () => {
     setError(null)
@@ -151,12 +151,18 @@ export function ProductDetailPage() {
         <Link to="/produtos/$productCode/editar" params={{ productCode: product.productCode }} className="button secondary"><Edit3 size={17} /> Editar</Link>
       </div>
       <section className="form-section"><div className="section-heading"><p className="eyebrow">composição</p><h2>Receita</h2></div>
-        {product.recipe?.length ? <div className="recipe-table-wrap"><table className="recipe-table" aria-label="Componentes da Receita"><thead><tr><th scope="col">Tipo</th><th scope="col">Produto</th><th scope="col" data-column="component-code">Código</th><th scope="col">Quantidade</th></tr></thead><tbody>{product.recipe.map((item) => {
-          const component = byCode.get(item.id)
-          return <tr key={item.id}><td data-column="component-category" title={component ? categoryName(component.category) : undefined} aria-label={component ? categoryName(component.category) : undefined}>{component ? <span className="component-category"><CategoryMark category={component.category} /></span> : '—'}</td><td className="recipe-component-name"><Link to="/produtos/$productCode" params={{ productCode: item.id }}>{component?.name ?? item.id}</Link></td><td data-column="component-code"><code>{item.id}</code></td><td className="recipe-component-quantity"><strong>{item.quantity} {component?.unit ?? ''}</strong></td></tr>
-        })}</tbody></table></div> : <p className="hint-box">Este Produto não tem Receita. Ele aparece como material terminal no BOM.</p>}
+        {product.recipe?.length ? <ProductBomTree key={product.productCode} productCode={product.productCode} products={products} /> : <p className="hint-box">Este Produto não tem Receita. Ele aparece como material terminal no BOM.</p>}
       </section>
-      <section className="danger-zone"><div><p className="eyebrow">exclusão</p><h2>Remover Produto</h2><p>{canDelete ? 'Não há receitas nem Listas de Materiais que usem este Produto.' : dependencyMessage(dependencies)}</p></div></section>
+      <section className="danger-zone">
+        <div>
+          <p className="eyebrow">exclusão</p>
+          <h2>Remover Produto</h2>
+          {canDelete ? <p>Não há receitas nem Listas de Materiais que usem este Produto.</p> : <>
+            <p>Remoção bloqueada enquanto estes registros usarem o Produto:</p>
+            <DependencyList dependencies={dependencies} />
+          </>}
+        </div>
+      </section>
       <div className="detail-actions danger-actions"><button type="button" className="button danger" disabled={!canDelete} onClick={() => void deleteCurrent}><Trash2 size={17} /> Excluir</button></div>
       {error && <ErrorNotice>{error}</ErrorNotice>}
     </div>
@@ -168,4 +174,11 @@ function dependencyMessage(dependencies: ProductDependencies): string {
   const listNames = dependencies.lists.map((list) => list.name)
   const parts = [recipeNames.length ? `Receitas: ${recipeNames.join(', ')}` : '', listNames.length ? `Listas: ${listNames.join(', ')}` : ''].filter(Boolean)
   return parts.length ? `Não pode excluir enquanto houver dependências. ${parts.join('. ')}` : 'Não há dependências.'
+}
+
+function DependencyList({ dependencies }: { dependencies: ProductDependencies }) {
+  return <ul className="dependency-list" aria-label="Dependências que impedem a exclusão">
+    {dependencies.recipes.map((product) => <li key={`recipe-${product.productCode}`}><span>Receita</span><Link to="/produtos/$productCode" params={{ productCode: product.productCode }}>{product.name}</Link></li>)}
+    {dependencies.lists.map((list) => <li key={`list-${list.id}`}><span>Lista de Materiais</span><Link to="/listas/$listId" params={{ listId: list.id }}>{list.name}</Link></li>)}
+  </ul>
 }

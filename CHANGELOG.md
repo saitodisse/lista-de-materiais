@@ -2,6 +2,18 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.2.0 — 2026-08-25
+
+### Added
+
+- A ficha de Produto exibe a árvore completa da Receita com expansão por uma camada ou por toda a árvore, quantidades simuladas e custos recalculados em tempo real sem salvar alterações.
+- O campo de quantidade da árvore seleciona todo o conteúdo ao receber clique, facilitando a substituição direta do valor.
+- O bloco de exclusão lista as Receitas e Listas de Materiais que impedem a remoção, com links diretos para cada dependência.
+
+### Changed
+
+- O servidor de desenvolvimento usa `0.0.0.0:5177`, com a documentação local apontando para `http://localhost:5177`.
+
 ## 0.1.4 — 2026-08-25
 
 ### Changed
@@ -49,7 +61,7 @@ Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 ### Changed
 
 - A categoria legada de limpeza é migrada e exibida como Outros.
-- O servidor Vite usa `0.0.0.0:5174`; o preview PWA usa `0.0.0.0:4173` para separar desenvolvimento e service worker de produção.
+- O servidor Vite usa `0.0.0.0:5177`; o preview PWA usa `0.0.0.0:4173` para separar desenvolvimento e service worker de produção.
 
 ### Fixed
 
