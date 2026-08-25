@@ -34,6 +34,7 @@
 - O primeiro acesso ao build publicado precisa de conexão para registrar o service worker. Depois de ativo, o shell, rotas, dados IndexedDB e cálculos locais podem abrir após F5 sem internet.
 - “Dados neste aparelho” é a garantia de persistência local. A indicação de conectividade deve refletir o estado real de `navigator.onLine`; cache não significa internet.
 - Preserve o uso em tela pequena. Tabelas devem ter cabeçalhos semânticos e um contêiner com rolagem horizontal em vez de comprimir ou desalinhavar colunas. Textos longos de observação e preparo devem preservar as linhas salvas e quebrar palavras longas com segurança.
+- O `AppShell` possui um rodapé global discreto com links externos para o portfólio de Julio Saito e o repositório público. Preserve os dois links, o rótulo acessível e `rel="noopener noreferrer"` ao abrir nova aba.
 
 ## Qualidade
 

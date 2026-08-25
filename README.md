@@ -16,6 +16,7 @@ PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de
 - Demonstração opcional de um pacote com três pizzas de muçarela e um único controle confirmado para adicioná-la ou limpar todos os dados locais.
 - Exportação e importação JSON local, com validação e confirmação antes de substituir o catálogo.
 - Uso offline após a primeira abertura online e ativação do service worker, inclusive ao atualizar uma rota com F5.
+- Rodapé discreto em todas as rotas, com crédito para Julio Saito, portfólio e acesso ao repositório público.
 
 ## Limites intencionais
 

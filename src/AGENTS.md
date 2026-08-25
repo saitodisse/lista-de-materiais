@@ -19,6 +19,7 @@
 - Rotas são declaradas em `router.tsx`; mantenha rotas profundas renderizáveis pelo shell PWA.
 - Busca, categorias e modo de lista de Produtos usam nuqs. O modo também é espelhado em `localStorage` como preferência local; não duplique esse estado em outra fonte.
 - O service worker usa `injectManifest`. Navegações tentam a rede primeiro e caem para o shell precacheado; preserve essa distinção para não quebrar desenvolvimento no Vite nem F5 offline no build.
+- Créditos e links externos ficam no rodapé único de `AppShell`, abaixo do `Outlet`; não repita esse conteúdo em cada rota.
 
 ## Interface e testes
 

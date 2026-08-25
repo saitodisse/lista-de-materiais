@@ -52,6 +52,11 @@ export function AppShell() {
         </aside>
         <main className="main-content" data-route={pathname}>
           <Outlet />
+          <footer className="app-footer" aria-label="Créditos e código-fonte">
+            <a href="https://julio-saito.vercel.app/" target="_blank" rel="noopener noreferrer">Feito por Julio Saito</a>
+            <span aria-hidden="true">·</span>
+            <a href="https://github.com/saitodisse/lista-de-materiais" target="_blank" rel="noopener noreferrer">Código no GitHub</a>
+          </footer>
         </main>
         <nav className="mobile-nav" aria-label="Navegação principal">
           {nav.map(({ to, label, icon: Icon }) => (

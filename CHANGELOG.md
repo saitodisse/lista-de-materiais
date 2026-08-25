@@ -2,6 +2,12 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.1.2 — 2026-08-24
+
+### Added
+
+- Rodapé global discreto com crédito para Julio Saito, link para o portfólio e link para o código-fonte público no GitHub.
+
 ## 0.1.1 — 2026-08-24
 
 ### Fixed
