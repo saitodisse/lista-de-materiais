@@ -3,7 +3,7 @@
 ## Identidade e campos
 
 - O código de Produto é minúsculo, com hífens, único e imutável depois da criação. Normalize a entrada com `slugify` e valide duplicidade antes do primeiro salvamento e novamente na persistência.
-- A ficha contém categoria e unidade da biblioteca, peso opcional, custo de compra opcional, valor de venda opcional, observações, modo de preparo e Receita opcional.
+- A ficha contém categoria e unidade da biblioteca, peso opcional, custo de compra opcional, valor de venda opcional, observações, modo de preparo e Receita opcional. Observações e modo de preparo são texto multilinha: renderize-os em `pre` com `white-space: pre-wrap`, sem trocar a tipografia do aplicativo.
 - Categorias de limpeza não existem na interface atual. Migrações e importações normalizam o código legado `l` para `c`, apresentado como Outros.
 
 ## Receita

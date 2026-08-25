@@ -8,7 +8,7 @@ PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de
 - Código de Produto único, normalizado como slug e imutável depois de criado.
 - Categorias consistentes: Produto Final, Produto Unitário, Semi-acabado, Matéria-prima, Embalagem e Outros, cada uma com uma cor e sigla.
 - Receita com componentes existentes, distintos e positivos, bloqueando autorreferência e ciclos.
-- Observações e modo de preparo por Produto.
+- Observações e modo de preparo por Produto, preservando as quebras de linha informadas.
 - Catálogo em cartões ou tabela, com pesquisa por nome/código e filtros combináveis de categoria.
 - Estado de pesquisa, filtros e visualização na URL; a preferência entre cartões e tabela também é preservada no armazenamento local.
 - Listas de Materiais com seleção ordenada por categoria e nome em `pt-BR`.

@@ -143,6 +143,21 @@ describe('consulta de Produtos', () => {
     expect(screen.getByRole('button', { name: 'Excluir' }).closest('.danger-zone')).toBeNull()
   })
 
+  it('preserva as quebras de linha de observações e modo de preparo', async () => {
+    await db.products.put({
+      ...massa,
+      notes: 'Use farinha peneirada.\nMantenha a embalagem fechada.',
+      preparation: 'Misture os ingredientes.\nAsse até dourar.',
+    })
+    renderProductsRoute('/produtos/massa-integral')
+
+    const notes = await screen.findByText((_, element) => element?.tagName === 'PRE' && element.textContent === 'Use farinha peneirada.\nMantenha a embalagem fechada.')
+    const preparation = screen.getByText((_, element) => element?.tagName === 'PRE' && element.textContent === 'Misture os ingredientes.\nAsse até dourar.')
+
+    expect(notes.tagName).toBe('PRE')
+    expect(preparation.tagName).toBe('PRE')
+  })
+
   it('mostra a categoria como a primeira coluna de cada componente da Receita', async () => {
     await db.products.add({
       ...massa,

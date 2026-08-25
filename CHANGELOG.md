@@ -2,6 +2,12 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.1.1 — 2026-08-24
+
+### Fixed
+
+- Observações e modo de preparo na ficha de Produto agora preservam as quebras de linha salvas, com tipografia normal e quebra segura de palavras em telas estreitas.
+
 ## 0.1.0 — 2026-08-24
 
 ### Added

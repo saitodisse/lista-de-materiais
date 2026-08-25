@@ -144,8 +144,8 @@ export function ProductDetailPage() {
           <div><dt>Valor de venda</dt><dd>{product.saleValue == null ? 'Não informado' : formatCurrency(product.saleValue)}</dd></div>
           <div><dt>Receita</dt><dd>{product.recipe?.length ? `${product.recipe.length} componente(s)` : 'Material terminal'}</dd></div>
         </dl>
-        {product.notes && <p className="notes"><strong>Observações</strong>{product.notes}</p>}
-        {product.preparation && <p className="notes"><strong>Modo de preparo</strong>{product.preparation}</p>}
+        {product.notes && <div className="notes"><strong>Observações</strong><pre>{product.notes}</pre></div>}
+        {product.preparation && <div className="notes"><strong>Modo de preparo</strong><pre>{product.preparation}</pre></div>}
       </section>
       <div className="detail-actions detail-actions--record">
         <Link to="/produtos/$productCode/editar" params={{ productCode: product.productCode }} className="button secondary"><Edit3 size={17} /> Editar</Link>
