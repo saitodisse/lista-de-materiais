@@ -2,10 +2,11 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { NuqsTestingAdapter, type OnUrlUpdateFunction } from 'nuqs/adapters/testing'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db, resetDatabaseForTest } from '../../db/database'
 import type { ProductRecord } from '../../domain/catalog'
 import { ProductDetailPage, ProductsPage } from './ProductPages'
+import { ProductPrintPage } from './ProductPrintPage'
 
 const massa: ProductRecord = {
   id: 'massa-integral',
@@ -29,10 +30,11 @@ function renderProductsRoute(initialEntry: string, onUrlUpdate?: OnUrlUpdateFunc
   const rootRoute = createRootRoute({ component: () => <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}><Outlet /></NuqsTestingAdapter> })
   const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos', component: ProductsPage })
   const productRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode', component: ProductDetailPage })
+  const printRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode/imprimir', component: ProductPrintPage })
   const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas', component: () => null })
   const listRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas/$listId', component: () => null })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([productsRoute, productRoute, listsRoute, listRoute]),
+    routeTree: rootRoute.addChildren([productsRoute, productRoute, printRoute, listsRoute, listRoute]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
 
@@ -92,6 +94,23 @@ describe('consulta de Produtos', () => {
     expect(row?.querySelector('[data-column="category"]')).toHaveAttribute('aria-label', 'Outros')
     expect(row?.querySelector('[data-column="category"]')).toHaveAttribute('title', 'Outros')
     expect(row?.querySelector('.category-mark')).toHaveTextContent('o')
+  })
+
+  it('mostra na tabela o custo calculado de Produtos compostos', async () => {
+    await db.products.add({
+      ...massa,
+      id: 'pizza-integral',
+      productCode: 'pizza-integral',
+      name: 'Pizza integral',
+      category: 'u',
+      unit: 'UN',
+      purchaseQuoteValue: null,
+      recipe: [{ id: massa.productCode, quantity: 2 }],
+    })
+    renderProductsRoute('/produtos?view=table')
+
+    const row = (await screen.findByRole('link', { name: 'Pizza integral' })).closest('tr')!
+    expect(row.querySelector('[data-column="purchase-cost"]')).toHaveTextContent(/R\$\s*9,00/)
   })
 
   it('sincroniza a visualização entre nuqs e a preferência deste aparelho', async () => {
@@ -208,11 +227,21 @@ describe('consulta de Produtos', () => {
     expect(within(table).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
       'Produto',
       'Quantidade',
-      'Custo',
     ])
     expect(within(table).getByRole('link', { name: 'Farinha' })).toBeInTheDocument()
-    expect(screen.getAllByText(/R\$\s*4,00/)).toHaveLength(3)
+    expect(screen.getByRole('button', { name: 'Exibir custo' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'KG' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Árvore completa' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Exibir custo' }))
+    expect(within(table).getByRole('columnheader', { name: 'Custo' })).toBeInTheDocument()
+    expect(screen.getAllByText(/R\$\s*4,00/)).toHaveLength(3)
+
+    const massQuantityInKg = screen.getByRole('spinbutton', { name: 'Quantidade simulada de Massa integral' })
+    await user.click(screen.getByRole('button', { name: 'G' }))
+    expect(massQuantityInKg).toHaveValue('2000')
+    await user.click(screen.getByRole('button', { name: 'KG' }))
+    expect(massQuantityInKg).toHaveValue('2')
 
     const rootQuantity = screen.getByRole('spinbutton', { name: 'Quantidade simulada de Pizza de muçarela' }) as HTMLInputElement
     await user.click(rootQuantity)
@@ -234,6 +263,56 @@ describe('consulta de Produtos', () => {
     expect(massQuantity).toHaveValue('3.12346')
     expect(screen.getByRole('spinbutton', { name: 'Quantidade simulada de Pizza de muçarela' })).toHaveValue('1.56173')
     expect(screen.getAllByText(/R\$\s*6,25/)).toHaveLength(3)
+    await waitFor(() => {
+      const printLink = screen.getByRole('link', { name: 'Imprimir receita' }) as HTMLAnchorElement
+      const search = new URL(printLink.href).searchParams
+      expect(search.get('multiplier')).toBe('1.56173')
+      expect(search.get('cost')).toBe('true')
+      expect(search.get('unit')).toBe('kg')
+      expect(search.get('tree')).toBe('full')
+    })
     expect((await db.products.get('pizza-de-mucarela'))?.recipe).toEqual([{ id: massa.productCode, quantity: 2 }])
+  })
+
+  it('copia a árvore completa com cabeçalho tabular e confirma o resultado', async () => {
+    const user = userEvent.setup()
+    await db.products.put({ ...massa, recipe: [{ id: 'farinha', quantity: 0.5 }], purchaseQuoteValue: null })
+    await db.products.add({ ...massa, id: 'farinha', productCode: 'farinha', name: 'Farinha', category: 'm', unit: 'KG', purchaseQuoteValue: 4 })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    renderProductsRoute('/produtos/massa-integral')
+
+    await screen.findByRole('table', { name: 'Árvore calculada da Receita' })
+    await user.click(screen.getByRole('button', { name: 'Copiar para planilha' }))
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Produto\tCódigo\tQuantidade\tUnidade'))
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Farinha\tfarinha\t0,5\tKG'))
+    expect(await screen.findByRole('status')).toHaveTextContent('Receita copiada para colar na planilha.')
+  })
+
+  it('prepara a rota de impressão com o multiplicador recebido pela URL', async () => {
+    await db.products.put({ ...massa, recipe: [{ id: 'farinha', quantity: 0.5 }], purchaseQuoteValue: null })
+    await db.products.add({ ...massa, id: 'farinha', productCode: 'farinha', name: 'Farinha', category: 'm', unit: 'KG', purchaseQuoteValue: 4 })
+    renderProductsRoute('/produtos/massa-integral/imprimir?multiplier=2')
+
+    const table = await screen.findByRole('table', { name: 'Receita de Massa integral' })
+    expect(screen.getByRole('heading', { name: 'Massa integral' })).toBeInTheDocument()
+    expect(screen.queryByText('massa-integral')).not.toBeInTheDocument()
+    expect(screen.queryByText('farinha')).not.toBeInTheDocument()
+    expect(within(table).getByRole('cell', { name: /Farinha/ })).toHaveTextContent('Farinha')
+    expect(within(table).getAllByRole('cell').map((cell) => cell.textContent)).toContain('1')
+    expect(screen.getByText(/multiplicador 2/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exibir custo' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'KG' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Árvore completa' })).toHaveAttribute('aria-pressed', 'true')
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Exibir custo' }))
+    expect(within(table).getByRole('columnheader', { name: 'Custo' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'G' }))
+    expect(screen.getByRole('button', { name: 'G' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(table).getByRole('cell', { name: '1.000' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Uma camada' }))
+    expect(screen.getByRole('button', { name: 'Uma camada' })).toHaveAttribute('aria-pressed', 'true')
   })
 })

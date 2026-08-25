@@ -27,9 +27,11 @@ export function AppShell() {
   const productionPlanNav = { to: '/listas', label: 'Plano de produção', icon: LayoutList } as const
   const settingsNav = { to: '/configuracoes', label: 'Configurações', icon: Settings } as const
 
+  const isPrintRoute = pathname.endsWith('/imprimir')
+
   return (
     <NuqsAdapter>
-      <div className="app-frame">
+      {isPrintRoute ? <main className="print-shell"><Outlet /></main> : <div className="app-frame">
         <aside className="rail">
           <Link to="/" className="brand" aria-label="Lista de Materiais, início">
             <span className="brand-mark"><span /><span /><span /></span>
@@ -73,7 +75,7 @@ export function AppShell() {
             </Link>
           ))}
         </nav>
-      </div>
+      </div>}
     </NuqsAdapter>
   )
 }

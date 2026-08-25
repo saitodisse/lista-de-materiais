@@ -37,6 +37,10 @@ export function calculateProductTree(products: ProductRecord[], productCode: str
   return root.toObject()
 }
 
+export function calculateProductCost(products: ProductRecord[], productCode: string): number | null {
+  return calculateProductTree(products, productCode).calculatedCost
+}
+
 function terminalNodes(node: ITreeNode): ITreeNode[] {
   const children = Object.values(node.children ?? {})
   return children.length === 0 ? [node] : children.flatMap(terminalNodes)

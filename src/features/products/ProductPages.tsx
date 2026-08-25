@@ -7,6 +7,7 @@ import { EmptyState, ErrorNotice, PageHeader } from '../../components/Page'
 import { db, deleteProduct, getProductDependencies, saveProduct } from '../../db/database'
 import { categoryOptions, ProductDependencyError, type ProductDependencies, type ProductRecord } from '../../domain/catalog'
 import { ProductBomTree } from '../bom/ProductBomTree'
+import { calculateProductCost } from '../bom/calculator'
 import { ProductForm } from './ProductForm'
 import { useProductFilters } from './useProductFilters'
 import { useProductListView } from './useProductListView'
@@ -41,7 +42,7 @@ export function ProductsPage() {
           </section>
           {filteredProducts.length === 0 ? <EmptyState title="Nenhum Produto encontrado">Ajuste a busca ou ligue outras categorias para consultar o catálogo.</EmptyState> : view === 'cards' ? <section className="record-grid" aria-label="Produtos cadastrados">
             {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
-          </section> : <ProductTable products={filteredProducts} />}
+          </section> : <ProductTable products={filteredProducts} catalogue={products} />}
         </>
       )}
     </div>
@@ -67,7 +68,16 @@ function CategoryMark({ category }: { category: ProductRecord['category'] }) {
   return <span className="category-mark" data-category={category} aria-hidden="true">{category === 'c' ? 'o' : category}</span>
 }
 
-function ProductTable({ products }: { products: ProductRecord[] }) {
+function ProductTable({ products, catalogue }: { products: ProductRecord[]; catalogue: ProductRecord[] }) {
+  const calculatedCosts = useMemo(() => new Map(products.map((product) => {
+    if (!product.recipe?.length) return [product.productCode, product.purchaseQuoteValue] as const
+    try {
+      return [product.productCode, calculateProductCost(catalogue, product.productCode)] as const
+    } catch {
+      return [product.productCode, null] as const
+    }
+  })), [catalogue, products])
+
   return (
     <div className="catalog-table-wrap">
       <table className="catalog-table" aria-label="Produtos cadastrados">
@@ -80,7 +90,7 @@ function ProductTable({ products }: { products: ProductRecord[] }) {
             <td data-column="product"><div className="record-card-head"><Link to="/produtos/$productCode" params={{ productCode: product.productCode }}>{product.name}</Link><code className="catalog-product-code">{product.productCode}</code></div></td>
             <td>{product.unit}</td>
             <td data-column="recipe">{product.recipe?.length ? `${product.recipe.length} componente${product.recipe.length === 1 ? '' : 's'}` : 'Material terminal'}</td>
-            <td data-column="purchase-cost">{product.purchaseQuoteValue == null ? '—' : formatCurrency(product.purchaseQuoteValue)}</td>
+            <td data-column="purchase-cost">{calculatedCosts.get(product.productCode) == null ? '—' : formatCurrency(calculatedCosts.get(product.productCode)!)}</td>
             <td data-column="sale-value">{product.saleValue == null ? '—' : formatCurrency(product.saleValue)}</td>
           </tr>)}
         </tbody>

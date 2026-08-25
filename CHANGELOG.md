@@ -2,6 +2,19 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.3.0 — 2026-08-25
+
+### Added
+
+- A tabela de Produtos calcula e exibe o custo unitário de Produtos compostos pela árvore BOM.
+- A ficha de Produto permite imprimir a receita, copiar a árvore para uma planilha e simular quantidades, unidades e profundidade.
+- A impressão abre em uma rota própria, sem códigos, com controles para custo, KG/G e uma camada ou a árvore completa.
+
+### Changed
+
+- O multiplicador, custo, unidade e expansão da árvore são controlados por `nuqs` e preservados ao abrir a impressão.
+- A rota de impressão usa um layout isolado, otimizado para papel.
+
 ## 0.2.0 — 2026-08-25
 
 ### Added
