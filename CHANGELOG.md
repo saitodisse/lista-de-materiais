@@ -2,6 +2,15 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.1.4 — 2026-08-25
+
+### Changed
+
+- O catálogo agora abre em tabela, com o seletor Tabela antes de Cartões e o Produto como página inicial em `/`.
+- As categorias são o primeiro campo das tabelas de Produtos e de Receita: o marcador compacto exibe o nome completo apenas no tooltip; no catálogo, os cabeçalhos compactos usam `CAT` e `UN`.
+- As tabelas adaptam suas colunas à largura disponível e, no celular, preservam somente os dados essenciais de cada Produto ou componente da Receita.
+- Configurações e Plano de produção ficam como acessos secundários no rodapé da barra lateral; a página de configurações reúne os controles de cópia JSON e demonstração.
+
 ## 0.1.3 — 2026-08-24
 
 ### Changed

@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { AppShell } from './AppShell'
 
 function renderAppShell() {
@@ -8,7 +8,7 @@ function renderAppShell() {
   const homeRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => <h1>Visão geral</h1>,
+    component: () => <h1>Produtos</h1>,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([homeRoute]),
@@ -19,6 +19,8 @@ function renderAppShell() {
 }
 
 describe('shell do aplicativo', () => {
+  afterEach(cleanup)
+
   it('mantém créditos e links externos no rodapé global', async () => {
     renderAppShell()
 
@@ -29,5 +31,23 @@ describe('shell do aplicativo', () => {
     expect(portfolio).toHaveAttribute('target', '_blank')
     expect(repository).toHaveAttribute('href', 'https://github.com/saitodisse/lista-de-materiais')
     expect(repository).toHaveAttribute('target', '_blank')
+  })
+
+  it('mantém Configurações e Plano de produção como acessos secundários no rodapé da barra lateral', async () => {
+    renderAppShell()
+
+    const productLinks = await screen.findAllByRole('link', { name: 'Produtos' })
+    const settingsLinks = await screen.findAllByRole('link', { name: 'Configurações' })
+    const planLinks = await screen.findAllByRole('link', { name: 'Plano de produção' })
+
+    expect(productLinks[0]).toHaveAttribute('href', '/')
+    expect(settingsLinks).toHaveLength(2)
+    expect(settingsLinks[0]).toHaveAttribute('href', '/configuracoes')
+    expect(settingsLinks[0].closest('.rail-footer')).not.toBeNull()
+    expect(planLinks).toHaveLength(2)
+    expect(planLinks[0]).toHaveAttribute('href', '/listas')
+    expect(planLinks[0].closest('.rail-footer')).not.toBeNull()
+    expect(screen.queryByRole('link', { name: 'Listas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Visão geral' })).not.toBeInTheDocument()
   })
 })

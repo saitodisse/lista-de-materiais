@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Archive, Boxes, CloudOff, LayoutList, Wifi } from 'lucide-react'
+import { Archive, CloudOff, LayoutList, Settings, Wifi } from 'lucide-react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { NuqsAdapter } from 'nuqs/adapters/tanstack-router'
 
@@ -21,11 +21,11 @@ export function AppShell() {
   const online = useOnlineStatus()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
-  const nav = [
-    { to: '/', label: 'Visão geral', icon: Boxes },
-    { to: '/produtos', label: 'Produtos', icon: Archive },
-    { to: '/listas', label: 'Listas', icon: LayoutList },
+  const primaryNav = [
+    { to: '/', label: 'Produtos', icon: Archive },
   ] as const
+  const productionPlanNav = { to: '/listas', label: 'Plano de produção', icon: LayoutList } as const
+  const settingsNav = { to: '/configuracoes', label: 'Configurações', icon: Settings } as const
 
   return (
     <NuqsAdapter>
@@ -36,13 +36,21 @@ export function AppShell() {
             <span>lista<br />de materiais</span>
           </Link>
           <nav aria-label="Navegação principal">
-            {nav.map(({ to, label, icon: Icon }) => (
+            {primaryNav.map(({ to, label, icon: Icon }) => (
               <Link key={to} to={to} className="nav-link" activeProps={{ className: 'nav-link active' }}>
                 <Icon size={19} strokeWidth={1.8} /> {label}
               </Link>
             ))}
           </nav>
           <div className="rail-footer">
+            <nav aria-label="Acesso secundário">
+              <Link to={settingsNav.to} className="device-note" activeProps={{ className: 'device-note active' }}>
+                <Settings size={15} /> {settingsNav.label}
+              </Link>
+              <Link to={productionPlanNav.to} className="device-note" activeProps={{ className: 'device-note active' }}>
+                <LayoutList size={15} /> {productionPlanNav.label}
+              </Link>
+            </nav>
             <span className="device-note"><CloudOff size={16} /> Dados neste aparelho</span>
             <span className={`connection ${online ? 'online' : 'offline'}`}>
               {online ? <Wifi size={15} /> : <CloudOff size={15} />}
@@ -59,7 +67,7 @@ export function AppShell() {
           </footer>
         </main>
         <nav className="mobile-nav" aria-label="Navegação principal">
-          {nav.map(({ to, label, icon: Icon }) => (
+          {[...primaryNav, productionPlanNav, settingsNav].map(({ to, label, icon: Icon }) => (
             <Link key={to} to={to} className="mobile-link" activeProps={{ className: 'mobile-link active' }}>
               <Icon size={19} /> <span>{label}</span>
             </Link>

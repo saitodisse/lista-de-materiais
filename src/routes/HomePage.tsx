@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, BookOpenCheck, Download, PackagePlus, Trash2, Upload } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
-import { EmptyState, ErrorNotice, PageHeader } from '../components/Page'
+import { Download, PackagePlus, Trash2, Upload } from 'lucide-react'
+import { ErrorNotice, PageHeader } from '../components/Page'
 import { addDemo, clearAllLocalData, db, exportLocalData, importLocalData } from '../db/database'
 
 export function HomePage() {
@@ -54,16 +53,23 @@ export function HomePage() {
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível importar o arquivo.') }
     finally { setIsImporting(false) }
   }
-  return <div className="page home-page"><PageHeader eyebrow="controle local" title="Materiais, sem ruído." description="Fichas de Produto, receitas e BOMs guardadas somente neste aparelho." />
-    <section className="control-panel">
-      <div className="panel-label">CATÁLOGO LOCAL / 01</div>
-      <div className="panel-stats"><div><strong>{data.products}</strong><span>Produtos</span></div><div><strong>{data.lists}</strong><span>Listas</span></div></div>
-      <p>Monte uma receita com componentes existentes. Quando precisar, uma Lista transforma os Produtos desejados em materiais terminais consolidados.</p>
-      <div className="panel-actions"><Link to="/produtos/novo" className="button primary"><PackagePlus size={18} /> Novo Produto</Link><Link to="/listas/nova" className="button inverse"><BookOpenCheck size={18} /> Nova Lista</Link></div>
-    </section>
-    {data.products === 0 ? <EmptyState title="Comece pela primeira ficha" action={<Link to="/produtos/novo" className="button primary">Cadastrar Produto</Link>}>Nada sai deste navegador. Cadastre materiais e depois relacione-os em receitas.</EmptyState> : <section className="quick-grid"><Link to="/produtos" className="quick-card"><span>01</span><h2>Catálogo</h2><p>Consulte códigos, unidades, custo, peso e receita.</p><ArrowRight size={20} /></Link><Link to="/listas" className="quick-card"><span>02</span><h2>Listas</h2><p>Peça quantidades e acompanhe a árvore BOM.</p><ArrowRight size={20} /></Link></section>}
-    <section className="demo-note"><div><p className="eyebrow">cópia local</p><h2>Exportar ou substituir dados</h2><p>O JSON inclui Produtos, Receitas e Listas. A importação substitui todos os dados deste aparelho.</p></div><div className="data-actions"><button type="button" className="button quiet" onClick={() => void downloadExport()}><Download size={17} /> Exportar JSON</button><button type="button" className="button quiet" disabled={isImporting} onClick={() => importInput.current?.click()}><Upload size={17} /> {isImporting ? 'Importando…' : 'Importar JSON'}</button><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void importFile(event)} /></div></section>
-    <section className="demo-note demo-control"><div><p className="eyebrow">{hasDemo ? 'dados deste aparelho' : 'demonstração opcional'}</p><h2>{hasDemo ? 'Limpar todos os dados' : 'Adicionar a demonstração de pizzas'}</h2><p>{hasDemo ? 'Apaga Produtos, Listas e entradas deste aparelho.' : 'Inclui matérias-primas, massa e molho semiacabados, pizza unitária, embalagem, Produto final e uma Lista.'}</p></div><button type="button" className="button quiet" disabled={isChangingDemo} onClick={() => void changeDemo()}>{hasDemo ? <Trash2 size={16} /> : <PackagePlus size={16} />} {isChangingDemo ? 'Aguarde…' : hasDemo ? 'Limpar tudo' : 'Adicionar demonstração'}</button></section>
-    {error && <ErrorNotice>{error}</ErrorNotice>}
-  </div>
+
+  return (
+    <div className="page detail-page">
+      <PageHeader eyebrow="neste aparelho" title="Configurações" description="Gerencie os dados locais, a cópia JSON e a demonstração opcional deste aparelho." />
+      <section className="detail-card" aria-label="Resumo dos dados locais">
+        <div className="section-heading"><p className="eyebrow">dados locais</p><h2>Conteúdo guardado</h2><p>Produtos e planos de produção ficam somente neste navegador.</p></div>
+        <dl className="spec-list"><div><dt>Produtos</dt><dd>{data.products}</dd></div><div><dt>Planos de produção</dt><dd>{data.lists}</dd></div></dl>
+      </section>
+      <section className="detail-card" aria-label="Cópia dos dados locais">
+        <div className="section-heading"><p className="eyebrow">cópia local</p><h2>Exportar ou importar dados</h2><p>Use o JSON para levar uma cópia a outro aparelho ou recuperar os dados manualmente. Importar substitui o conteúdo deste aparelho.</p></div>
+        <div className="data-actions"><button type="button" className="button quiet" onClick={() => void downloadExport()}><Download size={17} /> Exportar JSON</button><button type="button" className="button quiet" disabled={isImporting} onClick={() => importInput.current?.click()}><Upload size={17} /> {isImporting ? 'Importando…' : 'Importar JSON'}</button><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void importFile(event)} /></div>
+      </section>
+      <section className="demo-note demo-control">
+        <div><p className="eyebrow">{hasDemo ? 'dados de demonstração' : 'demonstração opcional'}</p><h2>{hasDemo ? 'Limpar todos os dados' : 'Adicionar a demonstração de pizzas'}</h2><p>{hasDemo ? 'Apaga Produtos, Listas e entradas deste aparelho.' : 'Inclui matérias-primas, massa e molho semiacabados, pizza unitária, embalagem, Produto final e uma Lista.'}</p></div>
+        <button type="button" className="button quiet" disabled={isChangingDemo} onClick={() => void changeDemo()}>{hasDemo ? <Trash2 size={16} /> : <PackagePlus size={16} />} {isChangingDemo ? 'Aguarde…' : hasDemo ? 'Limpar tudo' : 'Adicionar demonstração'}</button>
+      </section>
+      {error && <ErrorNotice>{error}</ErrorNotice>}
+    </div>
+  )
 }

@@ -12,9 +12,9 @@ function isProductListView(value: string | null): value is ProductListView {
 }
 
 function readStoredView(): ProductListView {
-  if (typeof window === 'undefined') return 'cards'
+  if (typeof window === 'undefined') return 'table'
   const stored = window.localStorage.getItem(storageKey)
-  return isProductListView(stored) ? stored : 'cards'
+  return isProductListView(stored) ? stored : 'table'
 }
 
 function storeView(view: ProductListView): void {

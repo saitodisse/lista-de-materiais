@@ -28,8 +28,8 @@ export function ProductsPage() {
           <div className="catalog-toolbar">
             <p>{filteredProducts.length} de {products.length} Produto{products.length === 1 ? '' : 's'} no catálogo local</p>
             <div className="view-switch" role="group" aria-label="Modo de exibição dos Produtos">
-              <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>Cartões</button>
               <button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')}>Tabela</button>
+              <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>Cartões</button>
             </div>
           </div>
           <section className="catalog-filters" aria-label="Filtros de Produtos">
@@ -71,16 +71,16 @@ function ProductTable({ products }: { products: ProductRecord[] }) {
     <div className="catalog-table-wrap">
       <table className="catalog-table" aria-label="Produtos cadastrados">
         <thead>
-          <tr><th scope="col">Produto</th><th scope="col">Categoria</th><th scope="col">Unidade</th><th scope="col">Receita</th><th scope="col">Custo de compra</th><th scope="col">Valor de venda</th></tr>
+          <tr><th scope="col" aria-label="Categoria">CAT</th><th scope="col">Produto</th><th scope="col" aria-label="Unidade">UN</th><th scope="col" data-column="recipe">Receita</th><th scope="col" data-column="purchase-cost">Custo de compra</th><th scope="col" data-column="sale-value">Valor de venda</th></tr>
         </thead>
         <tbody>
           {products.map((product) => <tr key={product.id}>
-            <td><Link to="/produtos/$productCode" params={{ productCode: product.productCode }}>{product.name}</Link><code>{product.productCode}</code></td>
-            <td><span className="category-cell"><CategoryMark category={product.category} /><span>{categoryName(product.category)}</span></span></td>
+            <td data-column="category" title={categoryName(product.category)} aria-label={categoryName(product.category)}><span className="category-cell"><CategoryMark category={product.category} /></span></td>
+            <td data-column="product"><div className="record-card-head"><Link to="/produtos/$productCode" params={{ productCode: product.productCode }}>{product.name}</Link><code className="catalog-product-code">{product.productCode}</code></div></td>
             <td>{product.unit}</td>
-            <td>{product.recipe?.length ? `${product.recipe.length} componente${product.recipe.length === 1 ? '' : 's'}` : 'Material terminal'}</td>
-            <td>{product.purchaseQuoteValue == null ? '—' : formatCurrency(product.purchaseQuoteValue)}</td>
-            <td>{product.saleValue == null ? '—' : formatCurrency(product.saleValue)}</td>
+            <td data-column="recipe">{product.recipe?.length ? `${product.recipe.length} componente${product.recipe.length === 1 ? '' : 's'}` : 'Material terminal'}</td>
+            <td data-column="purchase-cost">{product.purchaseQuoteValue == null ? '—' : formatCurrency(product.purchaseQuoteValue)}</td>
+            <td data-column="sale-value">{product.saleValue == null ? '—' : formatCurrency(product.saleValue)}</td>
           </tr>)}
         </tbody>
       </table>
@@ -151,9 +151,9 @@ export function ProductDetailPage() {
         <Link to="/produtos/$productCode/editar" params={{ productCode: product.productCode }} className="button secondary"><Edit3 size={17} /> Editar</Link>
       </div>
       <section className="form-section"><div className="section-heading"><p className="eyebrow">composição</p><h2>Receita</h2></div>
-        {product.recipe?.length ? <div className="recipe-table-wrap"><table className="recipe-table" aria-label="Componentes da Receita"><thead><tr><th scope="col">Tipo</th><th scope="col">Produto</th><th scope="col">Código</th><th scope="col">Quantidade</th></tr></thead><tbody>{product.recipe.map((item) => {
+        {product.recipe?.length ? <div className="recipe-table-wrap"><table className="recipe-table" aria-label="Componentes da Receita"><thead><tr><th scope="col">Tipo</th><th scope="col">Produto</th><th scope="col" data-column="component-code">Código</th><th scope="col">Quantidade</th></tr></thead><tbody>{product.recipe.map((item) => {
           const component = byCode.get(item.id)
-          return <tr key={item.id}><td>{component ? <span className="component-category"><CategoryMark category={component.category} /><span>{categoryName(component.category)}</span></span> : '—'}</td><td><Link to="/produtos/$productCode" params={{ productCode: item.id }}>{component?.name ?? item.id}</Link></td><td><code>{item.id}</code></td><td><strong>{item.quantity} {component?.unit ?? ''}</strong></td></tr>
+          return <tr key={item.id}><td data-column="component-category" title={component ? categoryName(component.category) : undefined} aria-label={component ? categoryName(component.category) : undefined}>{component ? <span className="component-category"><CategoryMark category={component.category} /></span> : '—'}</td><td className="recipe-component-name"><Link to="/produtos/$productCode" params={{ productCode: item.id }}>{component?.name ?? item.id}</Link></td><td data-column="component-code"><code>{item.id}</code></td><td className="recipe-component-quantity"><strong>{item.quantity} {component?.unit ?? ''}</strong></td></tr>
         })}</tbody></table></div> : <p className="hint-box">Este Produto não tem Receita. Ele aparece como material terminal no BOM.</p>}
       </section>
       <section className="danger-zone"><div><p className="eyebrow">exclusão</p><h2>Remover Produto</h2><p>{canDelete ? 'Não há receitas nem Listas de Materiais que usem este Produto.' : dependencyMessage(dependencies)}</p></div></section>

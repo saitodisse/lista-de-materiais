@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db, resetDatabaseForTest } from '../db/database'
 import { HomePage } from './HomePage'
 
-function renderHomePage() {
+function renderSettingsPage() {
   const rootRoute = createRootRoute({ component: Outlet })
-  const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomePage })
-  const router = createRouter({ routeTree: rootRoute.addChildren([homeRoute]), history: createMemoryHistory({ initialEntries: ['/'] }) })
+  const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/configuracoes', component: HomePage })
+  const router = createRouter({ routeTree: rootRoute.addChildren([settingsRoute]), history: createMemoryHistory({ initialEntries: ['/configuracoes'] }) })
   return render(<RouterProvider router={router} />)
 }
 
@@ -22,10 +22,18 @@ describe('controle de dados locais', () => {
     vi.restoreAllMocks()
   })
 
+  it('apresenta os controles locais como Configurações', async () => {
+    renderSettingsPage()
+
+    expect(await screen.findByRole('heading', { name: 'Configurações' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Conteúdo guardado' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Exportar ou importar dados' })).toBeInTheDocument()
+  })
+
   it('pede confirmação antes de importar um arquivo', async () => {
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    renderHomePage()
+    renderSettingsPage()
 
     await screen.findByRole('button', { name: 'Importar JSON' })
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')
@@ -40,7 +48,7 @@ describe('controle de dados locais', () => {
   it('pede confirmação para adicionar a demonstração e depois limpar todos os dados locais', async () => {
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    renderHomePage()
+    renderSettingsPage()
 
     await user.click(await screen.findByRole('button', { name: 'Adicionar demonstração' }))
 

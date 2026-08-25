@@ -46,23 +46,36 @@ describe('consulta de Produtos', () => {
 
   afterEach(() => cleanup())
 
-  it('alterna entre cartões e tabela sem alterar o catálogo', async () => {
+  it('abre em tabela e alterna entre tabela e cartões sem alterar o catálogo', async () => {
     const user = userEvent.setup()
     renderProductsRoute('/produtos')
 
     expect(await screen.findByRole('heading', { name: 'Produtos' })).toBeInTheDocument()
-    expect(screen.queryByRole('table', { name: 'Produtos cadastrados' })).not.toBeInTheDocument()
-    expect(document.querySelector('.category-mark')).toHaveAttribute('data-category', 's')
-
-    await user.click(screen.getByRole('button', { name: 'Tabela' }))
-
     expect(screen.getByRole('table', { name: 'Produtos cadastrados' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Massa integral' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Tabela|Cartões/ }).map((button) => button.textContent)).toEqual(['Tabela', 'Cartões'])
+    expect(screen.getByRole('button', { name: 'Tabela' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('link', { name: 'Massa integral' }).closest('td')?.firstElementChild).toHaveClass('record-card-head')
+    expect(within(screen.getByRole('table', { name: 'Produtos cadastrados' })).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      'CAT',
+      'Produto',
+      'UN',
+      'Receita',
+      'Custo de compra',
+      'Valor de venda',
+    ])
+    expect(screen.getByRole('columnheader', { name: 'Receita' })).toHaveAttribute('data-column', 'recipe')
+    expect(screen.getByRole('columnheader', { name: 'Custo de compra' })).toHaveAttribute('data-column', 'purchase-cost')
     expect(document.querySelector('table .category-mark')).toHaveAttribute('data-category', 's')
 
     await user.click(screen.getByRole('button', { name: 'Cartões' }))
 
     expect(screen.queryByRole('table', { name: 'Produtos cadastrados' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Massa integral' })).toBeInTheDocument()
+    expect(document.querySelector('.category-mark')).toHaveAttribute('data-category', 's')
+
+    await user.click(screen.getByRole('button', { name: 'Tabela' }))
+
+    expect(screen.getByRole('table', { name: 'Produtos cadastrados' })).toBeInTheDocument()
   })
 
   it('substitui as categorias de limpeza por Outros no filtro e na tabela', async () => {
@@ -74,7 +87,8 @@ describe('consulta de Produtos', () => {
     expect(screen.queryByRole('button', { name: 'Produtos de Limpeza' })).not.toBeInTheDocument()
 
     const row = screen.getByRole('link', { name: 'Outro material' }).closest('tr')
-    expect(within(row!).getByText('Outros')).toBeInTheDocument()
+    expect(row?.querySelector('[data-column="category"]')).toHaveAttribute('aria-label', 'Outros')
+    expect(row?.querySelector('[data-column="category"]')).toHaveAttribute('title', 'Outros')
     expect(row?.querySelector('.category-mark')).toHaveTextContent('o')
   })
 
@@ -101,7 +115,7 @@ describe('consulta de Produtos', () => {
       { ...massa, id: 'pao-integral', productCode: 'pao-integral', name: 'Pão integral', category: 'p', unit: 'UN' },
       { ...massa, id: 'agua-filtrada', productCode: 'agua-filtrada', name: 'Água filtrada', category: 'm', unit: 'L' },
     ])
-    renderProductsRoute('/produtos?search=agua-filtrada&categories=m', (event) => urlUpdates.push(event.searchParams))
+    renderProductsRoute('/produtos?view=cards&search=agua-filtrada&categories=m', (event) => urlUpdates.push(event.searchParams))
 
     expect(await screen.findByRole('heading', { name: 'Água filtrada' })).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Buscar por nome ou código' })).toHaveValue('agua-filtrada')
@@ -179,7 +193,10 @@ describe('consulta de Produtos', () => {
       'Código',
       'Quantidade',
     ])
-    expect(within(component!).getByText('Semi-acabado')).toBeInTheDocument()
+    expect(component?.querySelector('[data-column="component-category"]')).toHaveAttribute('aria-label', 'Semi-acabado')
+    expect(component?.querySelector('[data-column="component-category"]')).toHaveAttribute('title', 'Semi-acabado')
     expect(component?.querySelector('.category-mark')).toHaveAttribute('data-category', 's')
+    expect(within(table).getByRole('columnheader', { name: 'Código' })).toHaveAttribute('data-column', 'component-code')
+    expect(within(component!).getByText('1 KG').closest('td')).toHaveClass('recipe-component-quantity')
   })
 })
