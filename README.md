@@ -2,6 +2,8 @@
 
 PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de Materiais (BOM) sem sair do aparelho. Os dados são armazenados no IndexedDB do navegador; não existe backend, conta nem sincronização.
 
+Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.vercel.app).
+
 ## O que já entrega
 
 - Cadastro, edição, consulta e exclusão protegida de Produtos.

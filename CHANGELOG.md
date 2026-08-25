@@ -2,6 +2,12 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.1.3 — 2026-08-24
+
+### Changed
+
+- A documentação passa a indicar `https://listademateriais.vercel.app` como endereço público canônico do PWA.
+
 ## 0.1.2 — 2026-08-24
 
 ### Added

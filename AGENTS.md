@@ -30,6 +30,7 @@
 
 ## PWA e interface
 
+- O endereço público canônico é `https://listademateriais.vercel.app`. Ao documentar acesso ao aplicativo publicado, use esse domínio sem hífens; endereços temporários de deployment da Vercel não são referências públicas.
 - O service worker é criado por `vite-plugin-pwa` com `injectManifest`. Ele usa o shell precacheado para rotas de navegação sem rede, mas prioriza o servidor quando há rede para não entregar HTML antigo ao Vite em desenvolvimento.
 - O primeiro acesso ao build publicado precisa de conexão para registrar o service worker. Depois de ativo, o shell, rotas, dados IndexedDB e cálculos locais podem abrir após F5 sem internet.
 - “Dados neste aparelho” é a garantia de persistência local. A indicação de conectividade deve refletir o estado real de `navigator.onLine`; cache não significa internet.
