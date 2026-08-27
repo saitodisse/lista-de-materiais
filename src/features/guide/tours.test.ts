@@ -34,6 +34,15 @@ describe('tours do guia', () => {
     }
   })
 
+  it('usa uma narrativa amigável e progressiva nos textos', () => {
+    expect(guideTourSteps.produto[0].popover?.title).toBe('1. Dê um nome e um código')
+    expect(guideTourSteps.arvore[1].popover?.description).toContain('blocos básicos')
+    expect(guideTourSteps.json[0].popover?.description).toContain('apenas neste navegador')
+    expect(guideTourSteps['catalogo-tabela'][0].popover?.title).toBe('O coração do sistema')
+    expect(guideTourSteps['detalhe-produto'][2].popover?.description).toContain('não estiver preso em nenhuma receita')
+    expect(guideTourSteps['edicao-produto'][0].popover?.description).toContain('nada será modificado')
+  })
+
   it('carrega Driver.js somente ao iniciar, mostra progresso e encerra o tour ativo', async () => {
     const { driver } = await import('driver.js')
 

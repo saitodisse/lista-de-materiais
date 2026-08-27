@@ -2,6 +2,14 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.4.1 — 2026-08-27
+
+### Changed
+
+- Os textos dos tours foram reescritos com uma narrativa conversacional e progressiva, explicando o propósito de cada etapa e reforçando o armazenamento local.
+- A numeração foi mantida nos fluxos de criação, enquanto as telas de consulta receberam títulos mais naturais e diretos.
+- A explicação da árvore passou a usar as ideias de raiz, ramos, folhas e blocos básicos, com o resultado da BOM apresentado em linguagem simples.
+
 ## 0.4.0 — 2026-08-27
 
 ### Added
