@@ -3,10 +3,12 @@ import { AppShell } from './components/AppShell'
 import { MaterialListDetailPage, MaterialListEditorPage, MaterialListsPage } from './features/material-lists/MaterialListPages'
 import { ProductDetailPage, ProductEditorPage, ProductsPage } from './features/products/ProductPages'
 import { ProductPrintPage } from './features/products/ProductPrintPage'
+import { GuidePage } from './routes/GuidePage'
 import { HomePage } from './routes/HomePage'
 
 const rootRoute = createRootRoute({ component: AppShell })
 const catalogRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: ProductsPage })
+const guideRoute = createRoute({ getParentRoute: () => rootRoute, path: 'como-usar', component: GuidePage })
 const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: 'produtos', beforeLoad: () => { throw redirect({ to: '/' }) } })
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: 'configuracoes', component: HomePage })
 const newProductRoute = createRoute({ getParentRoute: () => rootRoute, path: 'produtos/novo', component: ProductEditorPage })
@@ -18,7 +20,7 @@ const newListRoute = createRoute({ getParentRoute: () => rootRoute, path: 'lista
 const listRoute = createRoute({ getParentRoute: () => rootRoute, path: 'listas/$listId', component: MaterialListDetailPage })
 const editListRoute = createRoute({ getParentRoute: () => rootRoute, path: 'listas/$listId/editar', component: MaterialListEditorPage })
 
-const routeTree = rootRoute.addChildren([catalogRoute, productsRoute, settingsRoute, newProductRoute, productPrintRoute, productRoute, editProductRoute, listsRoute, newListRoute, listRoute, editListRoute])
+const routeTree = rootRoute.addChildren([catalogRoute, guideRoute, productsRoute, settingsRoute, newProductRoute, productPrintRoute, productRoute, editProductRoute, listsRoute, newListRoute, listRoute, editListRoute])
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' })
 

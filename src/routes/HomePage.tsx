@@ -61,9 +61,9 @@ export function HomePage() {
         <div className="section-heading"><p className="eyebrow">dados locais</p><h2>Conteúdo guardado</h2><p>Produtos e planos de produção ficam somente neste navegador.</p></div>
         <dl className="spec-list"><div><dt>Produtos</dt><dd>{data.products}</dd></div><div><dt>Planos de produção</dt><dd>{data.lists}</dd></div></dl>
       </section>
-      <section className="detail-card" aria-label="Cópia dos dados locais">
+      <section className="detail-card" data-guide="settings-json" aria-label="Cópia dos dados locais">
         <div className="section-heading"><p className="eyebrow">cópia local</p><h2>Exportar ou importar dados</h2><p>Use o JSON para levar uma cópia a outro aparelho ou recuperar os dados manualmente. Importar substitui o conteúdo deste aparelho.</p></div>
-        <div className="data-actions"><button type="button" className="button quiet" onClick={() => void downloadExport()}><Download size={17} /> Exportar JSON</button><button type="button" className="button quiet" disabled={isImporting} onClick={() => importInput.current?.click()}><Upload size={17} /> {isImporting ? 'Importando…' : 'Importar JSON'}</button><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void importFile(event)} /></div>
+        <div className="data-actions"><button type="button" className="button quiet" data-guide="json-export" onClick={() => void downloadExport()}><Download size={17} /> Exportar JSON</button><button type="button" className="button quiet" data-guide="json-import" disabled={isImporting} onClick={() => importInput.current?.click()}><Upload size={17} /> {isImporting ? 'Importando…' : 'Importar JSON'}</button><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void importFile(event)} /></div>
       </section>
       <section className="demo-note demo-control">
         <div><p className="eyebrow">{hasDemo ? 'dados de demonstração' : 'demonstração opcional'}</p><h2>{hasDemo ? 'Limpar todos os dados' : 'Adicionar a demonstração de pizzas'}</h2><p>{hasDemo ? 'Apaga Produtos, Listas e entradas deste aparelho.' : 'Inclui matérias-primas, massa e molho semiacabados, pizza unitária, embalagem, Produto final e uma Lista.'}</p></div>

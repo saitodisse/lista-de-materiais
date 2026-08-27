@@ -17,6 +17,7 @@ Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.ver
 - BOM aninhada, materiais terminais consolidados, árvore expansível, custos de compra e valores de venda quando houver dados suficientes.
 - Demonstração opcional de um pacote com três pizzas de muçarela e um único controle confirmado para adicioná-la ou limpar todos os dados locais.
 - Exportação e importação JSON local, com validação e confirmação antes de substituir o catálogo.
+- Guia **Como usar** com cadeia didática de pizzas, árvores calculadas e tours interativos manuais.
 - Uso offline após a primeira abertura online e ativação do service worker, inclusive ao atualizar uma rota com F5.
 - Rodapé discreto em todas as rotas, com crédito para Julio Saito, portfólio e acesso ao repositório público.
 
@@ -46,6 +47,8 @@ pnpm preview
 O preview de produção abre em `http://localhost:4173`.
 
 ## Usar o aplicativo
+
+O guia completo fica em [Como usar](https://listademateriais.vercel.app/como-usar) dentro do aplicativo. Ele não cria dados: os exemplos são calculados somente em memória e os cadastros são feitos manualmente nas telas reais.
 
 1. Cadastre matérias-primas, embalagens ou Produtos sem Receita.
 2. Cadastre semiacabados e Produtos finais, selecionando os componentes já existentes e suas quantidades.

@@ -41,15 +41,15 @@ export function MaterialListForm({
   })
 
   return (
-    <form className="editor-form" onSubmit={(event) => void submit(event)} noValidate>
+    <form className="editor-form" data-guide="material-list-form" onSubmit={(event) => void submit(event)} noValidate>
       <section className="form-section">
         <div className="section-heading"><p className="eyebrow">identificação</p><h2>Lista de Materiais</h2></div>
-        <div className="form-grid"><label htmlFor="list-name">Nome
+        <div className="form-grid" data-guide="list-name"><label htmlFor="list-name">Nome
           <input id="list-name" {...form.register('name')} placeholder="Ex.: 100 pães integrais" autoFocus />
           {form.formState.errors.name && <span className="field-error">{form.formState.errors.name.message}</span>}
         </label></div>
       </section>
-      <section className="form-section">
+      <section className="form-section" data-guide="list-products">
         <div className="section-heading inline-heading"><div><p className="eyebrow">quantidades desejadas</p><h2>Produtos da lista</h2><p>Cada Produto pode aparecer uma vez.</p></div><button type="button" className="button secondary" disabled={products.length === 0} onClick={() => fields.append({ productCode: '', quantity: 1 })}><Plus size={17} /> Adicionar Produto</button></div>
         {fields.fields.length === 0 ? <p className="hint-box">Inclua os Produtos que deseja calcular.</p> : <div className="recipe-lines list-lines">
           {fields.fields.map((field, index) => <div className="recipe-line" key={field.id}>
@@ -66,7 +66,7 @@ export function MaterialListForm({
         {form.formState.errors.entries?.message && <span className="field-error">{form.formState.errors.entries.message}</span>}
       </section>
       {formError && <ErrorNotice>{formError}</ErrorNotice>}
-      <div className="form-actions"><button type="submit" className="button primary" disabled={form.formState.isSubmitting || products.length === 0}><Save size={18} /> {form.formState.isSubmitting ? 'Salvando…' : 'Salvar Lista'}</button></div>
+      <div className="form-actions" data-guide="list-save"><button type="submit" className="button primary" disabled={form.formState.isSubmitting || products.length === 0}><Save size={18} /> {form.formState.isSubmitting ? 'Salvando…' : 'Salvar Lista'}</button></div>
     </form>
   )
 }

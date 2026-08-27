@@ -95,10 +95,10 @@ export function ProductForm({
   })
 
   return (
-    <form className="editor-form" onSubmit={(event) => void submit(event)} noValidate>
+    <form className="editor-form" data-guide="product-form" onSubmit={(event) => void submit(event)} noValidate>
       <section className="form-section">
         <div className="section-heading"><p className="eyebrow">identificação</p><h2>Ficha do Produto</h2></div>
-        <div className="form-grid two-columns">
+        <div className="form-grid two-columns" data-guide="product-code">
           <label htmlFor="product-code">Código
             <input
               id="product-code"
@@ -148,7 +148,7 @@ export function ProductForm({
 
       <section className="form-section">
         <div className="section-heading"><p className="eyebrow">medidas e valores opcionais</p><h2>Peso, custo e venda</h2></div>
-        <div className="form-grid two-columns">
+        <div className="form-grid two-columns" data-guide="product-fields">
           <label htmlFor="product-weight">Peso por unidade (kg)
             <input id="product-weight" type="number" step="any" min="0" inputMode="decimal" {...form.register('weight')} placeholder="Ex.: 0,65" />
             <small>Use quando uma unidade tiver peso conhecido.</small>
@@ -170,7 +170,7 @@ export function ProductForm({
         </div>
       </section>
 
-      <section className="form-section">
+      <section className="form-section" data-guide="product-recipe">
         <div className="section-heading inline-heading"><div><p className="eyebrow">composição</p><h2>Receita</h2><p>Produtos existentes, sem repetição e em quantidade positiva.</p></div><button type="button" className="button secondary" onClick={() => recipe.append({ id: '', quantity: 1 })}><Plus size={17} /> Adicionar componente</button></div>
         {recipe.fields.length === 0 ? <p className="hint-box">Este Produto não tem Receita e será tratado como material terminal.</p> : (
           <div className="recipe-lines">
@@ -190,7 +190,7 @@ export function ProductForm({
         )}
       </section>
       {formError && <ErrorNotice>{formError}</ErrorNotice>}
-      <div className="form-actions"><button type="submit" className="button primary" disabled={form.formState.isSubmitting}><Save size={18} /> {form.formState.isSubmitting ? 'Salvando…' : 'Salvar Produto'}</button></div>
+      <div className="form-actions" data-guide="product-save"><button type="submit" className="button primary" disabled={form.formState.isSubmitting}><Save size={18} /> {form.formState.isSubmitting ? 'Salvando…' : 'Salvar Produto'}</button></div>
     </form>
   )
 }

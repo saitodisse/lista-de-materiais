@@ -50,4 +50,14 @@ describe('shell do aplicativo', () => {
     expect(screen.queryByRole('link', { name: 'Listas' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Visão geral' })).not.toBeInTheDocument()
   })
+
+  it('oferece Como usar na navegação desktop e móvel', async () => {
+    renderAppShell()
+
+    const guideLinks = await screen.findAllByRole('link', { name: 'Como usar' })
+    expect(guideLinks).toHaveLength(2)
+    expect(guideLinks[0]).toHaveAttribute('href', '/como-usar')
+    expect(guideLinks[0]).toHaveClass('nav-link')
+    expect(guideLinks[1]).toHaveClass('mobile-link')
+  })
 })

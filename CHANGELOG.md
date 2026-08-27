@@ -2,6 +2,19 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.4.0 — 2026-08-27
+
+### Added
+
+- Guia **Como usar** com narrativa progressiva de matérias-primas, semiacabados, Produtos Unitários e Produtos Finais, exemplos reais de campos e ilustrações cartunescas.
+- Árvores BOM calculadas na própria página do guia, sem gravar os exemplos no catálogo local.
+- Tours interativos para catálogo, detalhe e edição de Produto, iniciados automaticamente na primeira visita e reabertos pelo botão de ajuda no cabeçalho.
+
+### Changed
+
+- A página do catálogo e o guia aproveitam toda a largura disponível no desktop, com tipografia e espaçamentos ampliados.
+- O acesso secundário da navegação recebeu separação visual mais clara.
+
 ## 0.3.0 — 2026-08-25
 
 ### Added

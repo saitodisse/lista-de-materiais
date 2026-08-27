@@ -5,7 +5,7 @@ import { NuqsTestingAdapter, type OnUrlUpdateFunction } from 'nuqs/adapters/test
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db, resetDatabaseForTest } from '../../db/database'
 import type { ProductRecord } from '../../domain/catalog'
-import { ProductDetailPage, ProductsPage } from './ProductPages'
+import { ProductDetailPage, ProductEditorPage, ProductsPage } from './ProductPages'
 import { ProductPrintPage } from './ProductPrintPage'
 
 const massa: ProductRecord = {
@@ -30,11 +30,12 @@ function renderProductsRoute(initialEntry: string, onUrlUpdate?: OnUrlUpdateFunc
   const rootRoute = createRootRoute({ component: () => <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}><Outlet /></NuqsTestingAdapter> })
   const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos', component: ProductsPage })
   const productRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode', component: ProductDetailPage })
+  const editProductRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode/editar', component: ProductEditorPage })
   const printRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode/imprimir', component: ProductPrintPage })
   const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas', component: () => null })
   const listRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas/$listId', component: () => null })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([productsRoute, productRoute, printRoute, listsRoute, listRoute]),
+    routeTree: rootRoute.addChildren([productsRoute, productRoute, editProductRoute, printRoute, listsRoute, listRoute]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
 
@@ -45,6 +46,9 @@ describe('consulta de Produtos', () => {
   beforeEach(async () => {
     await resetDatabaseForTest()
     window.localStorage.clear()
+    window.localStorage.setItem('lista-de-materiais:guide-seen:catalogo-tabela', 'seen')
+    window.localStorage.setItem('lista-de-materiais:guide-seen:detalhe-produto', 'seen')
+    window.localStorage.setItem('lista-de-materiais:guide-seen:edicao-produto', 'seen')
     await db.products.add(massa)
   })
 
@@ -58,6 +62,11 @@ describe('consulta de Produtos', () => {
     expect(screen.getByRole('table', { name: 'Produtos cadastrados' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /Tabela|Cartões/ }).map((button) => button.textContent)).toEqual(['Tabela', 'Cartões'])
     expect(screen.getByRole('button', { name: 'Tabela' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Abrir ajuda desta tela' })).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="catalog-table-header"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="catalog-table-toolbar"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="catalog-table-filters"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="catalog-table"]')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Massa integral' }).closest('td')?.firstElementChild).toHaveClass('record-card-head')
     expect(within(screen.getByRole('table', { name: 'Produtos cadastrados' })).getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
       'CAT',
@@ -169,6 +178,11 @@ describe('consulta de Produtos', () => {
     renderProductsRoute('/produtos/massa-integral')
 
     expect(await screen.findByRole('heading', { name: 'Massa integral' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir ajuda desta tela' })).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-detail-header"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-detail-info"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-detail-actions"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-detail-recipe"]')).toBeInTheDocument()
     const warning = screen.getByRole('heading', { name: 'Remover Produto' }).closest('section')
 
     expect(warning).not.toBeNull()
@@ -176,6 +190,18 @@ describe('consulta de Produtos', () => {
     expect(within(warning!).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Editar' }).closest('.danger-zone')).toBeNull()
     expect(screen.getByRole('button', { name: 'Excluir' }).closest('.danger-zone')).toBeNull()
+  })
+
+  it('apresenta o tour e os alvos na edição de um Produto', async () => {
+    renderProductsRoute('/produtos/massa-integral/editar')
+
+    expect(await screen.findByRole('heading', { name: 'Editar Massa integral' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir ajuda desta tela' })).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-edit-header"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-code"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-fields"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-recipe"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-guide="product-save"]')).toBeInTheDocument()
   })
 
   it('lista e vincula as dependências que bloqueiam a exclusão', async () => {

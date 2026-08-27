@@ -1,23 +1,7 @@
-import { BadgeDollarSign, ChevronRight, WalletCards } from 'lucide-react'
-import type { ITreeNode } from '@saitodisse/bom-recipe-calculator'
+import { BadgeDollarSign, WalletCards } from 'lucide-react'
 import { formatCurrency, formatQuantity } from '../../components/format'
 import type { BomCalculation } from './calculator'
-
-function TreeNode({ node }: { node: ITreeNode }) {
-  const children = Object.values(node.children ?? {})
-  const label = `${node.name}: ${formatQuantity(node.calculatedQuantity)} ${node.unit}`
-  if (children.length === 0) {
-    return <li className="tree-leaf"><span className="tree-dot" /><span>{label}</span><code>{node.id}</code></li>
-  }
-  return (
-    <li className="tree-branch">
-      <details open>
-        <summary><ChevronRight size={17} /><span>{label}</span><code>{node.id}</code></summary>
-        <ul>{children.map((child) => <TreeNode key={child.path} node={child} />)}</ul>
-      </details>
-    </li>
-  )
-}
+import { MaterialsTree } from './MaterialsTree'
 
 export function BomResult({ calculation }: { calculation: BomCalculation }) {
   return (
@@ -44,7 +28,7 @@ export function BomResult({ calculation }: { calculation: BomCalculation }) {
       <div className="bom-trees">
         {calculation.trees.map(({ entry, root }) => (
           <article className="tree-card" key={`${entry.listId}-${entry.productCode}`}>
-            <ul className="material-tree"><TreeNode node={root} /></ul>
+            <MaterialsTree node={root} label={`Árvore de ${entry.productCode}`} />
           </article>
         ))}
       </div>

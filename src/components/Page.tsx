@@ -8,22 +8,29 @@ export function PageHeader({
   description,
   action,
   backTo,
+  help,
+  dataGuide,
 }: {
   eyebrow?: string
   title: string
   description?: string
   action?: { to: string; label: string }
   backTo?: string
+  help?: ReactNode
+  dataGuide?: string
 }) {
   return (
-    <header className="page-header">
+    <header className="page-header" data-guide={dataGuide}>
       <div>
         {backTo && <Link to={backTo} className="back-link"><ArrowLeft size={17} /> Voltar</Link>}
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
         {description && <p className="page-description">{description}</p>}
       </div>
-      {action && <Link to={action.to} className="button primary"><Plus size={18} /> {action.label}</Link>}
+      {(action || help) && <div className="page-header-actions">
+        {action && <Link to={action.to} className="button primary"><Plus size={18} /> {action.label}</Link>}
+        {help}
+      </div>}
     </header>
   )
 }

@@ -8,6 +8,7 @@ import { db, deleteProduct, getProductDependencies, saveProduct } from '../../db
 import { categoryOptions, ProductDependencyError, type ProductDependencies, type ProductRecord } from '../../domain/catalog'
 import { ProductBomTree } from '../bom/ProductBomTree'
 import { calculateProductCost } from '../bom/calculator'
+import { GuideHelpButton } from '../guide/GuideHelpButton'
 import { ProductForm } from './ProductForm'
 import { useProductFilters } from './useProductFilters'
 import { useProductListView } from './useProductListView'
@@ -24,17 +25,17 @@ export function ProductsPage() {
   })
   return (
     <div className="page">
-      <PageHeader eyebrow="catálogo" title="Produtos" description="Cada ficha tem um código permanente, medidas e uma receita opcional." action={{ to: '/produtos/novo', label: 'Novo Produto' }} />
+      <PageHeader dataGuide="catalog-table-header" eyebrow="catálogo" title="Produtos" description="Cada ficha tem um código permanente, medidas e uma receita opcional." action={{ to: '/produtos/novo', label: 'Novo Produto' }} help={view === 'table' ? <GuideHelpButton topic="catalogo-tabela" /> : undefined} />
       {products.length === 0 ? <EmptyState title="Seu catálogo está vazio" action={<Link to="/produtos/novo" className="button primary">Criar primeiro Produto</Link>}>Comece por uma matéria-prima, embalagem ou Produto final.</EmptyState> : (
         <>
-          <div className="catalog-toolbar">
+          <div className="catalog-toolbar" data-guide="catalog-table-toolbar">
             <p>{filteredProducts.length} de {products.length} Produto{products.length === 1 ? '' : 's'} no catálogo local</p>
             <div className="view-switch" role="group" aria-label="Modo de exibição dos Produtos">
               <button type="button" aria-pressed={view === 'table'} onClick={() => setView('table')}>Tabela</button>
               <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>Cartões</button>
             </div>
           </div>
-          <section className="catalog-filters" aria-label="Filtros de Produtos">
+          <section className="catalog-filters" data-guide="catalog-table-filters" aria-label="Filtros de Produtos">
             <label className="catalog-search" htmlFor="product-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Buscar por nome ou código</span><input id="product-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome ou código" /></label>
             <div className="category-filters" role="group" aria-label="Filtrar por categoria">
               {categoryOptions.map((category) => <button key={category.id} type="button" className="category-filter" data-category={category.id} aria-pressed={selectedCategories.has(category.id)} onClick={() => toggleCategory(category.id)}>{category.descriptionPtBr}</button>)}
@@ -79,7 +80,7 @@ function ProductTable({ products, catalogue }: { products: ProductRecord[]; cata
   })), [catalogue, products])
 
   return (
-    <div className="catalog-table-wrap">
+    <div className="catalog-table-wrap" data-guide="catalog-table">
       <table className="catalog-table" aria-label="Produtos cadastrados">
         <thead>
           <tr><th scope="col" aria-label="Categoria">CAT</th><th scope="col">Produto</th><th scope="col" aria-label="Unidade">UN</th><th scope="col" data-column="recipe">Receita</th><th scope="col" data-column="purchase-cost">Custo de compra</th><th scope="col" data-column="sale-value">Valor de venda</th></tr>
@@ -108,7 +109,7 @@ export function ProductEditorPage() {
   if (productCode && !product) return <div className="page"><PageHeader title="Produto não encontrado" backTo="/produtos" /><ErrorNotice>Esse código não existe neste aparelho.</ErrorNotice></div>
   return (
     <div className="page editor-page">
-      <PageHeader eyebrow={product ? 'edição' : 'novo registro'} title={product ? `Editar ${product.name}` : 'Novo Produto'} description="Os componentes da receita devem existir no catálogo." backTo={product ? `/produtos/${product.productCode}` : '/produtos'} />
+      <PageHeader dataGuide="product-edit-header" eyebrow={product ? 'edição' : 'novo registro'} title={product ? `Editar ${product.name}` : 'Novo Produto'} description="Os componentes da receita devem existir no catálogo." backTo={product ? `/produtos/${product.productCode}` : '/produtos'} help={productCode ? <GuideHelpButton topic="edicao-produto" /> : undefined} />
       <ProductForm product={product} products={products} onSave={async (record, previousCode) => {
         await saveProduct(record, previousCode)
         await navigate({ to: '/produtos/$productCode', params: { productCode: record.productCode } })
@@ -144,8 +145,8 @@ export function ProductDetailPage() {
   }
   return (
     <div className="page detail-page">
-      <PageHeader eyebrow="ficha técnica" title={product.name} description={`${categoryName(product.category)} · ${unitName(product.unit)}`} backTo="/produtos" />
-      <section className="detail-card">
+      <PageHeader dataGuide="product-detail-header" eyebrow="ficha técnica" title={product.name} description={`${categoryName(product.category)} · ${unitName(product.unit)}`} backTo="/produtos" help={<GuideHelpButton topic="detalhe-produto" />} />
+      <section className="detail-card" data-guide="product-detail-info">
         <div className="detail-title"><CategoryMark category={product.category} /><code>{product.productCode}</code></div>
         <dl className="spec-list">
           <div><dt>Unidade</dt><dd>{product.unit} · {unitName(product.unit)}</dd></div>
@@ -157,10 +158,10 @@ export function ProductDetailPage() {
         {product.notes && <div className="notes"><strong>Observações</strong><pre>{product.notes}</pre></div>}
         {product.preparation && <div className="notes"><strong>Modo de preparo</strong><pre>{product.preparation}</pre></div>}
       </section>
-      <div className="detail-actions detail-actions--record">
+      <div className="detail-actions detail-actions--record" data-guide="product-detail-actions">
         <Link to="/produtos/$productCode/editar" params={{ productCode: product.productCode }} className="button secondary"><Edit3 size={17} /> Editar</Link>
       </div>
-      <section className="form-section"><div className="section-heading"><p className="eyebrow">composição</p><h2>Receita</h2></div>
+      <section className="form-section" data-guide="product-detail-recipe"><div className="section-heading"><p className="eyebrow">composição</p><h2>Receita</h2></div>
         {product.recipe?.length ? <ProductBomTree key={product.productCode} productCode={product.productCode} products={products} /> : <p className="hint-box">Este Produto não tem Receita. Ele aparece como material terminal no BOM.</p>}
       </section>
       <section className="danger-zone">

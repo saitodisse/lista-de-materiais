@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Archive, CloudOff, LayoutList, Settings, Wifi } from 'lucide-react'
+import { Archive, BookOpen, CloudOff, LayoutList, Settings, Wifi } from 'lucide-react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { NuqsAdapter } from 'nuqs/adapters/tanstack-router'
 
@@ -23,6 +23,7 @@ export function AppShell() {
 
   const primaryNav = [
     { to: '/', label: 'Produtos', icon: Archive },
+    { to: '/como-usar', label: 'Como usar', icon: BookOpen },
   ] as const
   const productionPlanNav = { to: '/listas', label: 'Plano de produção', icon: LayoutList } as const
   const settingsNav = { to: '/configuracoes', label: 'Configurações', icon: Settings } as const

@@ -149,8 +149,8 @@ export function ProductBomTree({ productCode, products }: { productCode: string;
   }
 
   return (
-    <div className="product-bom-tree">
-      <div className="product-bom-tree-head">
+    <div className="product-bom-tree" data-guide="product-bom-tree">
+      <div className="product-bom-tree-head" data-guide="bom-tree-meaning">
         <div><p className="eyebrow">simulação de leitura</p><h3>Árvore completa da Receita</h3><p>Altere uma quantidade para aplicar o mesmo multiplicador a toda a árvore. Nada é salvo.</p></div>
         <div className="product-tree-controls">
           <button type="button" className="button quiet" aria-pressed={showCost} onClick={() => setShowCost(!showCost)}>Exibir custo</button>
@@ -164,7 +164,7 @@ export function ProductBomTree({ productCode, products }: { productCode: string;
           </div>
         </div>
       </div>
-      <div className="product-tree-table-wrap">
+      <div className="product-tree-table-wrap" data-guide="bom-tree-table">
         <table className="product-tree-table" data-show-cost={showCost} aria-label="Árvore calculada da Receita">
           <thead><tr><th scope="col">Produto</th><th scope="col">Quantidade</th>{showCost && <th scope="col">Custo</th>}</tr></thead>
           <tbody><TreeRows node={calculation.tree} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={changeQuantity} onQuantityReset={() => setDrafts({})} /></tbody>
