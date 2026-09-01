@@ -1,31 +1,17 @@
 import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Download, PackagePlus, Trash2, Upload } from 'lucide-react'
+import { Download, Upload } from 'lucide-react'
 import { ErrorNotice, PageHeader } from '../components/Page'
-import { addDemo, clearAllLocalData, db, exportLocalData, importLocalData } from '../db/database'
+import { db, exportLocalData, importLocalData } from '../db/database'
+import { DemoResetButton } from '../features/demo/DemoResetButton'
 
 export function HomePage() {
   const data = useLiveQuery(async () => ({ products: await db.products.count(), lists: await db.materialLists.count(), demo: await db.meta.get('demo-state') }))
   const [error, setError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
-  const [isChangingDemo, setIsChangingDemo] = useState(false)
   const importInput = useRef<HTMLInputElement>(null)
   if (!data) return <p className="loading-state">Preparando os dados neste aparelho…</p>
   const hasDemo = data.demo?.value === 'inserted'
-  const changeDemo = async () => {
-    setError(null)
-    const confirmation = hasDemo
-      ? 'Limpar todos os Produtos, Listas e entradas deste aparelho? Esta ação não pode ser desfeita.'
-      : 'Adicionar a demonstração de pizzas a este aparelho?'
-    if (!window.confirm(confirmation)) return
-    setIsChangingDemo(true)
-    try {
-      if (hasDemo) await clearAllLocalData()
-      else await addDemo()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : hasDemo ? 'Não foi possível limpar os dados locais.' : 'Não foi possível adicionar a demonstração.')
-    } finally { setIsChangingDemo(false) }
-  }
   const downloadExport = async () => {
     setError(null)
     try {
@@ -66,8 +52,8 @@ export function HomePage() {
         <div className="data-actions"><button type="button" className="button quiet" data-guide="json-export" onClick={() => void downloadExport()}><Download size={17} /> Exportar JSON</button><button type="button" className="button quiet" data-guide="json-import" disabled={isImporting} onClick={() => importInput.current?.click()}><Upload size={17} /> {isImporting ? 'Importando…' : 'Importar JSON'}</button><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void importFile(event)} /></div>
       </section>
       <section className="demo-note demo-control">
-        <div><p className="eyebrow">{hasDemo ? 'dados de demonstração' : 'demonstração opcional'}</p><h2>{hasDemo ? 'Limpar todos os dados' : 'Adicionar a demonstração de pizzas'}</h2><p>{hasDemo ? 'Apaga Produtos, Listas e entradas deste aparelho.' : 'Inclui matérias-primas, massa e molho semiacabados, pizza unitária, embalagem, Produto final e uma Lista.'}</p></div>
-        <button type="button" className="button quiet" disabled={isChangingDemo} onClick={() => void changeDemo()}>{hasDemo ? <Trash2 size={16} /> : <PackagePlus size={16} />} {isChangingDemo ? 'Aguarde…' : hasDemo ? 'Limpar tudo' : 'Adicionar demonstração'}</button>
+        <div><p className="eyebrow">{hasDemo ? 'demonstração carregada' : 'demonstração opcional'}</p><h2>{hasDemo ? 'Limpar todos os dados' : 'Carregar a demonstração de pizzas'}</h2><p>{hasDemo ? 'O mesmo controle limpa Produtos, Listas e entradas deste aparelho após a confirmação.' : 'Limpa a base atual e carrega as mesmas matérias-primas, semiacabados, pizza, embalagem, Produto Final e plano usados no guia.'}</p></div>
+        <DemoResetButton action={hasDemo ? 'clear' : 'demo'} className="button quiet" label={hasDemo ? 'Limpar tudo' : 'Limpar e carregar demonstração'} />
       </section>
       {error && <ErrorNotice>{error}</ErrorNotice>}
     </div>

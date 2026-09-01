@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -45,22 +45,29 @@ describe('controle de dados locais', () => {
     expect(await db.products.count()).toBe(0)
   })
 
-  it('pede confirmação para adicionar a demonstração e depois limpar todos os dados locais', async () => {
+  it('exige confirmação por checkbox para substituir pela demonstração e ainda permite limpar tudo', async () => {
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderSettingsPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Adicionar demonstração' }))
+    await user.click(await screen.findByRole('button', { name: 'Limpar e carregar demonstração' }))
+    const dialog = screen.getByRole('dialog', { name: 'Substituir todos os dados deste aparelho?' })
+    const replaceButton = within(dialog).getByRole('button', { name: 'Limpar e carregar demonstração' })
+    expect(replaceButton).toBeDisabled()
+    await user.click(within(dialog).getByRole('checkbox'))
+    await user.click(replaceButton)
 
-    expect(confirm).toHaveBeenCalledWith('Adicionar a demonstração de pizzas a este aparelho?')
     await waitFor(async () => expect(await db.products.get('pacote-3-pizzas-mucarela')).toBeDefined())
     await user.click(await screen.findByRole('button', { name: 'Limpar tudo' }))
 
-    expect(confirm).toHaveBeenLastCalledWith('Limpar todos os Produtos, Listas e entradas deste aparelho? Esta ação não pode ser desfeita.')
+    const clearDialog = screen.getByRole('dialog', { name: 'Limpar todos os dados deste aparelho?' })
+    const clearButton = within(clearDialog).getByRole('button', { name: 'Limpar todos os dados' })
+    expect(clearButton).toBeDisabled()
+    await user.click(within(clearDialog).getByRole('checkbox'))
+    await user.click(clearButton)
     await waitFor(async () => expect(await db.products.count()).toBe(0))
     expect(await db.materialLists.count()).toBe(0)
     expect(await db.materialListEntries.count()).toBe(0)
     expect(await db.meta.get('demo-state')).toMatchObject({ value: 'cleared' })
-    expect(await screen.findByRole('button', { name: 'Adicionar demonstração' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Limpar e carregar demonstração' })).toBeEnabled()
   })
 })

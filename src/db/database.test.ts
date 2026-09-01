@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { addDemo, clearAllLocalData, db, deleteProduct, exportLocalData, importLocalData, resetDatabaseForTest, saveMaterialList, saveProduct } from './database'
+import { clearAllLocalData, db, deleteProduct, exportLocalData, importLocalData, replaceAllWithDemo, resetDatabaseForTest, saveMaterialList, saveProduct } from './database'
 import { ProductDependencyError, type ProductRecord } from '../domain/catalog'
+import { DEMO_LIST_ID, DEMO_PRODUCT_CODES } from '../features/demo/demoData'
 
 function rawMaterial(code: string): ProductRecord {
   const now = '2026-01-01T00:00:00.000Z'
@@ -33,21 +34,26 @@ describe('persistência Dexie', () => {
     await expect(deleteProduct('farinha')).rejects.toBeInstanceOf(ProductDependencyError)
   })
 
-  it('adiciona a demonstração sem substituir os Produtos locais', async () => {
+  it('substitui toda a base pela demonstração oficial de pizzas', async () => {
     const materialLocal = rawMaterial('material-local')
     await saveProduct(materialLocal)
-    await addDemo()
+    await saveMaterialList({ id: 'lista-local', name: 'Lista local', createdAt: materialLocal.createdAt, updatedAt: materialLocal.updatedAt }, [{ listId: 'lista-local', productCode: materialLocal.productCode, quantity: 2 }])
+    await replaceAllWithDemo()
 
+    expect((await db.products.toArray()).map((product) => product.productCode).sort()).toEqual([...DEMO_PRODUCT_CODES].sort())
     expect(await db.products.get('pacote-3-pizzas-mucarela')).toMatchObject({ name: 'Pacote com 3 pizzas de muçarela', category: 'p' })
     expect(await db.products.get('pizza-de-mucarela')).toMatchObject({ category: 'u' })
     expect(await db.products.get('massa-de-pizza')).toMatchObject({ category: 's', unit: 'KG' })
     expect(await db.products.get('molho-de-tomate')).toMatchObject({ category: 's' })
-    expect(await db.materialLists.get('demo-lista-pacote-3-pizzas-mucarela')).toMatchObject({ name: 'Pacote com 3 pizzas de muçarela' })
-    expect(await db.products.get(materialLocal.productCode)).toMatchObject({ name: materialLocal.name })
+    expect(await db.materialLists.get(DEMO_LIST_ID)).toMatchObject({ name: 'Pacote com 3 pizzas de muçarela' })
+    expect(await db.materialListEntries.get([DEMO_LIST_ID, 'pacote-3-pizzas-mucarela'])).toMatchObject({ quantity: 1 })
+    expect(await db.products.get(materialLocal.productCode)).toBeUndefined()
+    expect(await db.materialLists.get('lista-local')).toBeUndefined()
+    expect(await db.meta.get('demo-state')).toMatchObject({ value: 'inserted' })
   })
 
   it('limpa Produtos, Listas, entradas e mantém o aparelho vazio após reiniciar', async () => {
-    await addDemo()
+    await replaceAllWithDemo()
     await clearAllLocalData()
 
     expect(await db.products.count()).toBe(0)
