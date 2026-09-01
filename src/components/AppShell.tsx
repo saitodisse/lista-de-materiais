@@ -23,8 +23,8 @@ export function AppShell() {
 
   const primaryNav = [
     { to: '/', label: 'Produtos', icon: Archive },
-    { to: '/como-usar', label: 'Como usar', icon: BookOpen },
   ] as const
+  const guideNav = { to: '/como-usar', label: 'Como usar', icon: BookOpen } as const
   const productionPlanNav = { to: '/listas', label: 'Plano de produção', icon: LayoutList } as const
   const settingsNav = { to: '/configuracoes', label: 'Configurações', icon: Settings } as const
 
@@ -53,6 +53,9 @@ export function AppShell() {
               <Link to={productionPlanNav.to} className="device-note" activeProps={{ className: 'device-note active' }}>
                 <LayoutList size={15} /> {productionPlanNav.label}
               </Link>
+              <Link to={guideNav.to} className="device-note" activeProps={{ className: 'device-note active' }}>
+                <BookOpen size={15} /> {guideNav.label}
+              </Link>
             </nav>
             <span className="device-note"><CloudOff size={16} /> Dados neste aparelho</span>
             <span className={`connection ${online ? 'online' : 'offline'}`}>
@@ -70,7 +73,7 @@ export function AppShell() {
           </footer>
         </main>
         <nav className="mobile-nav" aria-label="Navegação principal">
-          {[...primaryNav, productionPlanNav, settingsNav].map(({ to, label, icon: Icon }) => (
+          {[...primaryNav, guideNav, productionPlanNav, settingsNav].map(({ to, label, icon: Icon }) => (
             <Link key={to} to={to} className="mobile-link" activeProps={{ className: 'mobile-link active' }}>
               <Icon size={19} /> <span>{label}</span>
             </Link>

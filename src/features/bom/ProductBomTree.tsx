@@ -6,7 +6,7 @@ import { ErrorNotice } from '../../components/Page'
 import { formatCurrency } from '../../components/format'
 import type { ProductRecord } from '../../domain/catalog'
 import { calculateProductTree } from './calculator'
-import { convertProductTreeQuantity, displayProductTreeQuantity, formatProductTreeInput, formatProductTreeQuantity, productTreeToSpreadsheet, roundProductTreeValue, type ProductTreeExpansion, type ProductTreeUnit } from './productTree'
+import { convertProductTreeQuantity, displayProductTreeQuantity, formatProductTreeInput, formatProductTreeQuantity, parseProductTreeInput, productTreeToSpreadsheet, roundProductTreeDisplayValue, roundProductTreeValue, type ProductTreeExpansion, type ProductTreeUnit } from './productTree'
 import { useProductTreeOptions } from './useProductTreeOptions'
 
 function findNodeByPath(node: ITreeNode, path: string): ITreeNode | undefined {
@@ -34,10 +34,10 @@ interface TreeRowsProps {
   unit: ProductTreeUnit
   drafts: Record<string, string>
   onQuantityChange: (node: ITreeNode, value: string) => void
-  onQuantityReset: () => void
+  onQuantityCommit: (node: ITreeNode) => void
 }
 
-function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, onQuantityReset }: TreeRowsProps) {
+function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, onQuantityCommit }: TreeRowsProps) {
   const children = Object.values(node.children ?? {})
   const visibleChildren = expansion === 'full' || node.level === 0
   const fieldId = inputId(node.path)
@@ -59,10 +59,10 @@ function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, o
             min="0.00001"
             step="0.00001"
             inputMode="decimal"
-            value={drafts[node.path] ?? formatProductTreeInput(displayQuantity.value)}
-            aria-valuetext={`${formatProductTreeQuantity(displayQuantity.value)} ${displayQuantity.unit}`}
+            value={drafts[node.path] ?? formatProductTreeInput(displayQuantity.value, displayQuantity.unit)}
+            aria-valuetext={`${formatProductTreeQuantity(displayQuantity.value, displayQuantity.unit)} ${displayQuantity.unit}`}
             aria-valuemin={0.00001}
-            aria-valuenow={displayQuantity.value}
+            aria-valuenow={roundProductTreeDisplayValue(displayQuantity.value, displayQuantity.unit)}
             onChange={(event) => onQuantityChange(node, event.target.value)}
             onPointerDown={(event) => {
               event.preventDefault()
@@ -83,14 +83,14 @@ function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, o
                 if (document.activeElement === input) selectQuantityInput(input)
               }, 0)
             }}
-            onBlur={onQuantityReset}
+            onBlur={() => onQuantityCommit(node)}
           />
           <span>{displayQuantity.unit}</span>
         </div>
       </td>
       {showCost && <td className="product-tree-cost">{node.calculatedCost === null ? '—' : formatCurrency(node.calculatedCost)}</td>}
     </tr>
-    {visibleChildren && children.map((child) => <TreeRows key={child.path} node={child} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={onQuantityChange} onQuantityReset={onQuantityReset} />)}
+    {visibleChildren && children.map((child) => <TreeRows key={child.path} node={child} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={onQuantityChange} onQuantityCommit={onQuantityCommit} />)}
   </>
 }
 
@@ -122,13 +122,25 @@ export function ProductBomTree({ productCode, products }: { productCode: string;
 
   const changeQuantity = (node: ITreeNode, value: string) => {
     setDrafts({ [node.path]: value })
-    if (/[.,]$/.test(value)) return
-    const desiredDisplayQuantity = Number(value)
+  }
+
+  const commitQuantity = (node: ITreeNode) => {
+    const value = drafts[node.path]
+    if (value === undefined) return
+    if (/[.,]$/.test(value)) {
+      setDrafts({})
+      return
+    }
+    const desiredDisplayQuantity = parseProductTreeInput(value)
     const desiredQuantity = convertProductTreeQuantity(desiredDisplayQuantity, node.unit, unit).unit === 'G' ? desiredDisplayQuantity / 1000 : desiredDisplayQuantity
     const originalNode = findNodeByPath(calculation.baseTree, node.path)
-    if (!Number.isFinite(desiredQuantity) || desiredQuantity <= 0 || !originalNode || originalNode.calculatedQuantity <= 0) return
+    if (!Number.isFinite(desiredQuantity) || desiredQuantity <= 0 || !originalNode || originalNode.calculatedQuantity <= 0) {
+      setDrafts({})
+      return
+    }
     const roundedQuantity = roundProductTreeValue(desiredQuantity)
-    setDrafts({ [node.path]: formatProductTreeInput(convertProductTreeQuantity(roundedQuantity, node.unit, unit).value) })
+    const roundedDisplayQuantity = convertProductTreeQuantity(roundedQuantity, node.unit, unit)
+    setDrafts({ [node.path]: formatProductTreeInput(roundedDisplayQuantity.value, roundedDisplayQuantity.unit) })
     setMultiplier(roundedQuantity / originalNode.calculatedQuantity)
   }
 
@@ -167,7 +179,7 @@ export function ProductBomTree({ productCode, products }: { productCode: string;
       <div className="product-tree-table-wrap" data-guide="bom-tree-table">
         <table className="product-tree-table" data-show-cost={showCost} aria-label="Árvore calculada da Receita">
           <thead><tr><th scope="col">Produto</th><th scope="col">Quantidade</th>{showCost && <th scope="col">Custo</th>}</tr></thead>
-          <tbody><TreeRows node={calculation.tree} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={changeQuantity} onQuantityReset={() => setDrafts({})} /></tbody>
+          <tbody><TreeRows node={calculation.tree} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={changeQuantity} onQuantityCommit={commitQuantity} /></tbody>
         </table>
       </div>
       <div className="product-tree-actions">

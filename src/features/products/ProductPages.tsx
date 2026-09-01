@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Edit3, Search, Trash2 } from 'lucide-react'
+import { ClipboardCopy, Edit3, Printer, Search, Trash2 } from 'lucide-react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { categoryName, formatCurrency, unitName } from '../../components/format'
+import { categoryName, formatCurrency, formatQuantity, unitName } from '../../components/format'
 import { EmptyState, ErrorNotice, PageHeader } from '../../components/Page'
 import { db, deleteProduct, getProductDependencies, saveProduct } from '../../db/database'
 import { categoryOptions, ProductDependencyError, type ProductDependencies, type ProductRecord } from '../../domain/catalog'
@@ -79,7 +79,7 @@ function ProductTable({ products, catalogue }: { products: ProductRecord[]; cata
     }
   })), [catalogue, products])
 
-  return (
+  return <>
     <div className="catalog-table-wrap" data-guide="catalog-table">
       <table className="catalog-table" aria-label="Produtos cadastrados">
         <thead>
@@ -97,7 +97,51 @@ function ProductTable({ products, catalogue }: { products: ProductRecord[]; cata
         </tbody>
       </table>
     </div>
-  )
+    <CatalogTableActions products={products} calculatedCosts={calculatedCosts} />
+  </>
+}
+
+function CatalogTableActions({ products, calculatedCosts }: { products: ProductRecord[]; calculatedCosts: ReadonlyMap<string, number | null | undefined> }) {
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
+  const feedbackTimer = useRef<number | null>(null)
+  useEffect(() => () => { if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current) }, [])
+
+  const copySpreadsheet = async () => {
+    try {
+      await navigator.clipboard.writeText(productsToSpreadsheet(products, calculatedCosts))
+      setCopyFeedback('Produtos copiados para colar na planilha.')
+    } catch {
+      setCopyFeedback('Não foi possível copiar. Verifique a permissão da área de transferência.')
+    }
+    if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current)
+    feedbackTimer.current = window.setTimeout(() => setCopyFeedback(null), 4000)
+  }
+
+  return <>
+    <div className="product-tree-actions catalog-table-actions" data-guide="catalog-table-actions">
+      <button type="button" className="button secondary" onClick={() => void copySpreadsheet()}><ClipboardCopy size={17} /> Copiar para planilha</button>
+      <button type="button" className="button secondary" onClick={() => window.print()}><Printer size={17} /> Imprimir catálogo</button>
+    </div>
+    {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite">{copyFeedback}</p>}
+  </>
+}
+
+function productsToSpreadsheet(products: ProductRecord[], calculatedCosts: ReadonlyMap<string, number | null | undefined>): string {
+  const header = ['Produto', 'Código', 'Categoria', 'Unidade', 'Receita', 'Custo de compra', 'Valor de venda']
+  const rows = products.map((product) => [
+    product.name,
+    product.productCode,
+    categoryName(product.category),
+    product.unit,
+    product.recipe?.length ? `${product.recipe.length} componente${product.recipe.length === 1 ? '' : 's'}` : 'Material terminal',
+    calculatedCosts.get(product.productCode) == null ? '—' : formatCurrency(calculatedCosts.get(product.productCode)!),
+    product.saleValue == null ? '—' : formatCurrency(product.saleValue),
+  ])
+  return [header, ...rows].map((row) => row.map(spreadsheetCell).join('\t')).join('\n')
+}
+
+function spreadsheetCell(value: string): string {
+  return value.replace(/[\t\r\n]+/g, ' ')
 }
 
 export function ProductEditorPage() {
@@ -150,7 +194,7 @@ export function ProductDetailPage() {
         <div className="detail-title"><CategoryMark category={product.category} /><code>{product.productCode}</code></div>
         <dl className="spec-list">
           <div><dt>Unidade</dt><dd>{product.unit} · {unitName(product.unit)}</dd></div>
-          <div><dt>Peso</dt><dd>{product.weight == null ? 'Não informado' : `${product.weight} kg por unidade`}</dd></div>
+          <div><dt>Peso</dt><dd>{product.weight == null ? 'Não informado' : `${formatQuantity(product.weight)} kg por unidade`}</dd></div>
           <div><dt>Custo de compra</dt><dd>{product.purchaseQuoteValue == null ? 'Não informado' : formatCurrency(product.purchaseQuoteValue)}</dd></div>
           <div><dt>Valor de venda</dt><dd>{product.saleValue == null ? 'Não informado' : formatCurrency(product.saleValue)}</dd></div>
           <div><dt>Receita</dt><dd>{product.recipe?.length ? `${product.recipe.length} componente(s)` : 'Material terminal'}</dd></div>

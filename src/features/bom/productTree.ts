@@ -1,5 +1,5 @@
 import type { ITreeNode } from '@saitodisse/bom-recipe-calculator'
-import { formatCurrency } from '../../components/format'
+import { formatCurrency, formatNumber } from '../../components/format'
 
 export type ProductTreeExpansion = 'one-layer' | 'full'
 export type ProductTreeUnit = 'kg' | 'g'
@@ -8,12 +8,33 @@ export function roundProductTreeValue(value: number): number {
   return Math.round((value + Number.EPSILON) * 100_000) / 100_000
 }
 
-export function formatProductTreeQuantity(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 5 }).format(roundProductTreeValue(value))
+export function roundProductTreeDisplayValue(value: number, quantityUnit?: string): number {
+  if (quantityUnit !== 'G') return roundProductTreeValue(value)
+  return Math.round((value + Number.EPSILON) * 10) / 10
 }
 
-export function formatProductTreeInput(value: number): string {
-  return roundProductTreeValue(value).toFixed(5).replace(/\.?0+$/, '')
+export function formatProductTreeQuantity(value: number, quantityUnit?: string): string {
+  const isGrams = quantityUnit === 'G'
+  return formatNumber(roundProductTreeDisplayValue(value, quantityUnit), { minimumFractionDigits: isGrams ? 1 : 0, maximumFractionDigits: isGrams ? 1 : 5 })
+}
+
+export function formatProductTreeInput(value: number, quantityUnit?: string): string {
+  return formatProductTreeQuantity(value, quantityUnit)
+}
+
+export function parseProductTreeInput(value: string): number {
+  const normalized = value.trim().replace(/\s/g, '')
+  if (!normalized) return Number.NaN
+
+  if (normalized.includes(',')) {
+    return Number(normalized.replace(/\./g, '').replace(',', '.'))
+  }
+
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(normalized)) {
+    return Number(normalized.replace(/\./g, ''))
+  }
+
+  return Number(normalized)
 }
 
 export function displayProductTreeQuantity(node: ITreeNode, unit: ProductTreeUnit): { value: number; unit: string } {
@@ -41,7 +62,7 @@ export function productTreeToSpreadsheet(tree: ITreeNode, options: { showCost?: 
     const row = [
     `${'  '.repeat(node.level)}${node.name}`,
     node.id,
-    formatProductTreeQuantity(displayQuantity.value),
+    formatProductTreeQuantity(displayQuantity.value, displayQuantity.unit),
     displayQuantity.unit,
     ]
     if (showCost) row.push(node.calculatedCost === null ? '—' : formatCurrency(node.calculatedCost))

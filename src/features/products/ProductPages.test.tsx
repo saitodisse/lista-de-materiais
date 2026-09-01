@@ -60,6 +60,8 @@ describe('consulta de Produtos', () => {
 
     expect(await screen.findByRole('heading', { name: 'Produtos' })).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Produtos cadastrados' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copiar para planilha' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Imprimir catálogo' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /Tabela|Cartões/ }).map((button) => button.textContent)).toEqual(['Tabela', 'Cartões'])
     expect(screen.getByRole('button', { name: 'Tabela' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Abrir ajuda desta tela' })).toBeInTheDocument()
@@ -138,6 +140,25 @@ describe('consulta de Produtos', () => {
     await waitFor(() => expect(urlUpdates).toContain('?view=cards'))
   })
 
+  it('copia a tabela visível para uma planilha e oferece impressão do catálogo', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    renderProductsRoute('/produtos?view=table')
+
+    await screen.findByRole('table', { name: 'Produtos cadastrados' })
+    await user.click(screen.getByRole('button', { name: 'Copiar para planilha' }))
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Produto\tCódigo\tCategoria\tUnidade\tReceita\tCusto de compra\tValor de venda'))
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Massa integral\tmassa-integral\tSemi-acabado\tKG\tMaterial terminal\tR$'))
+    expect(await screen.findByRole('status')).toHaveTextContent('Produtos copiados para colar na planilha.')
+
+    await user.click(screen.getByRole('button', { name: 'Imprimir catálogo' }))
+    expect(print).toHaveBeenCalledTimes(1)
+    print.mockRestore()
+  })
+
   it('restaura busca e categorias da URL e atualiza a query pelos filtros', async () => {
     const user = userEvent.setup()
     const urlUpdates: URLSearchParams[] = []
@@ -190,6 +211,13 @@ describe('consulta de Produtos', () => {
     expect(within(warning!).queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Editar' }).closest('.danger-zone')).toBeNull()
     expect(screen.getByRole('button', { name: 'Excluir' }).closest('.danger-zone')).toBeNull()
+  })
+
+  it('formata o peso da ficha no padrão brasileiro', async () => {
+    await db.products.put({ ...massa, weight: 1000.5 })
+    renderProductsRoute('/produtos/massa-integral')
+
+    expect(await screen.findByText('1.000,5 kg por unidade')).toBeInTheDocument()
   })
 
   it('apresenta o tour e os alvos na edição de um Produto', async () => {
@@ -265,7 +293,7 @@ describe('consulta de Produtos', () => {
 
     const massQuantityInKg = screen.getByRole('spinbutton', { name: 'Quantidade simulada de Massa integral' })
     await user.click(screen.getByRole('button', { name: 'G' }))
-    expect(massQuantityInKg).toHaveValue('2000')
+    expect(massQuantityInKg).toHaveValue('2.000,0')
     await user.click(screen.getByRole('button', { name: 'KG' }))
     expect(massQuantityInKg).toHaveValue('2')
 
@@ -286,8 +314,10 @@ describe('consulta de Produtos', () => {
     await user.clear(massQuantity)
     await user.type(massQuantity, '3.123456')
 
-    expect(massQuantity).toHaveValue('3.12346')
-    expect(screen.getByRole('spinbutton', { name: 'Quantidade simulada de Pizza de muçarela' })).toHaveValue('1.56173')
+    expect(massQuantity).toHaveValue('3.123456')
+    await user.click(screen.getByRole('button', { name: 'Árvore completa' }))
+    await waitFor(() => expect(massQuantity).toHaveValue('3,12346'))
+    expect(screen.getByRole('spinbutton', { name: 'Quantidade simulada de Pizza de muçarela' })).toHaveValue('1,56173')
     expect(screen.getAllByText(/R\$\s*6,25/)).toHaveLength(3)
     await waitFor(() => {
       const printLink = screen.getByRole('link', { name: 'Imprimir receita' }) as HTMLAnchorElement
@@ -298,6 +328,36 @@ describe('consulta de Produtos', () => {
       expect(search.get('tree')).toBe('full')
     })
     expect((await db.products.get('pizza-de-mucarela'))?.recipe).toEqual([{ id: massa.productCode, quantity: 2 }])
+  })
+
+  it('arredonda para uma casa decimal o input de uma árvore exibida em gramas', async () => {
+    const user = userEvent.setup()
+    await db.products.bulkAdd([
+      { ...massa, id: 'massa-de-pizza', productCode: 'massa-de-pizza', name: 'Massa de pizza' },
+      {
+        ...massa,
+        id: 'pizza-de-mucarela',
+        productCode: 'pizza-de-mucarela',
+        name: 'Pizza de muçarela',
+        category: 'u',
+        unit: 'UN',
+        recipe: [{ id: 'massa-de-pizza', quantity: 0.508 }],
+      },
+    ])
+    renderProductsRoute('/produtos/pizza-de-mucarela?multiplier=3.93701&unit=g')
+
+    await screen.findByRole('table', { name: 'Árvore calculada da Receita' })
+    const massInput = document.querySelector<HTMLInputElement>('#tree-quantity-pizza-de-mucarela-massa-de-pizza')
+    if (!massInput) throw new Error('Input da massa não foi renderizado')
+    expect(massInput).toHaveValue('2.000,0')
+    expect(massInput).toHaveAttribute('aria-valuetext', '2.000,0 G')
+    expect(screen.getByRole('button', { name: 'G' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.clear(massInput)
+    await user.type(massInput, '2000,00108')
+    expect(massInput).toHaveValue('2000,00108')
+    await user.click(screen.getByRole('button', { name: 'Árvore completa' }))
+    await waitFor(() => expect(massInput).toHaveValue('2.000,0'))
   })
 
   it('copia a árvore completa com cabeçalho tabular e confirma o resultado', async () => {
@@ -337,7 +397,7 @@ describe('consulta de Produtos', () => {
     expect(within(table).getByRole('columnheader', { name: 'Custo' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'G' }))
     expect(screen.getByRole('button', { name: 'G' })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(table).getByRole('cell', { name: '1.000' })).toBeInTheDocument()
+    expect(within(table).getByRole('cell', { name: '1.000,0' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Uma camada' }))
     expect(screen.getByRole('button', { name: 'Uma camada' })).toHaveAttribute('aria-pressed', 'true')
   })

@@ -15,7 +15,7 @@ function PrintTreeRows({ tree, expansion, showCost, unit }: { tree: ITreeNode; e
     return (
     <tr key={node.path}>
       <td style={{ paddingInlineStart: `${10 + node.level * 18}px` }}><strong>{node.name}</strong></td>
-      <td>{formatProductTreeQuantity(displayQuantity.value)}</td>
+      <td>{formatProductTreeQuantity(displayQuantity.value, displayQuantity.unit)}</td>
       <td>{displayQuantity.unit}</td>
       {showCost && <td>{node.calculatedCost === null ? '—' : formatCurrency(node.calculatedCost)}</td>}
     </tr>
@@ -41,7 +41,7 @@ export function ProductPrintPage() {
   const displayRootQuantity = displayProductTreeQuantity(calculation.tree, unit)
   return <div className="page print-page">
     <div className="print-toolbar"><Link to="/produtos/$productCode" params={{ productCode }} search={{ multiplier, cost: showCost, unit, tree: expansion }} className="button secondary">Voltar à ficha</Link><button type="button" className="button primary" onClick={() => window.print()}>Imprimir</button></div>
-    <header className="print-header"><p className="eyebrow">receita</p><h1>{product.name}</h1><p>{categoryName(product.category)} · {formatProductTreeQuantity(displayRootQuantity.value)} {displayRootQuantity.unit} · multiplicador {formatProductTreeQuantity(multiplier)}</p></header>
+    <header className="print-header"><p className="eyebrow">receita</p><h1>{product.name}</h1><p>{categoryName(product.category)} · {formatProductTreeQuantity(displayRootQuantity.value, displayRootQuantity.unit)} {displayRootQuantity.unit} · multiplicador {formatProductTreeQuantity(multiplier)}</p></header>
     <div className="print-options" role="group" aria-label="Opções da impressão">
       <button type="button" className="button quiet" aria-pressed={showCost} onClick={() => setShowCost(!showCost)}>Exibir custo</button>
       <div className="tree-toggle" role="group" aria-label="Unidade da quantidade">

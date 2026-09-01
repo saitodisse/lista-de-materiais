@@ -2,6 +2,19 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.5.0 — 2026-09-01
+
+### Added
+
+- A demonstração de pizzas pode substituir toda a base local ou ser removida pela tela inicial e pelo guia, sempre após confirmação explícita com checkbox.
+- O guia **Como usar** abre diretamente os Produtos e a Lista carregados pela demonstração, com índice de navegação, exemplos por nível e explicações detalhadas dos campos.
+- O catálogo em tabela permite copiar os dados visíveis para uma planilha e imprimir uma versão compacta em preto e branco com todas as colunas.
+
+### Changed
+
+- Quantidades da árvore preservam a digitação até o blur, usam formatação pt-BR e arredondam valores exibidos em gramas para uma casa decimal.
+- O acesso **Como usar** foi movido para a navegação secundária no rodapé da barra lateral.
+
 ## 0.4.1 — 2026-08-27
 
 ### Changed
