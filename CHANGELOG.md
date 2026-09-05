@@ -2,6 +2,13 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.6.2 — 2026-09-05
+
+### Added
+
+- Página pública `/sobre-o-aplicativo` para identificar o Lista de Materiais, explicar o funcionamento local-first e descrever com transparência a autorização opcional do Google Drive.
+- Link público para a apresentação do aplicativo no rodapé e descrição atualizada do PWA para refletir as cópias JSON opcionais no Google Drive.
+
 ## 0.6.1 — 2026-09-05
 
 ### Fixed

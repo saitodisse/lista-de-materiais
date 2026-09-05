@@ -17,7 +17,7 @@ export default defineConfig({
       manifest: {
         name: 'Lista de Materiais',
         short_name: 'Materiais',
-        description: 'Produtos, receitas e listas de materiais neste aparelho.',
+        description: 'Catálogo local de Produtos, Receitas e Listas de Materiais, com cópias JSON opcionais no Google Drive.',
         lang: 'pt-BR',
         start_url: '/',
         display: 'standalone',

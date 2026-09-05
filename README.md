@@ -4,6 +4,8 @@ PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de
 
 Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.vercel.app).
 
+Página pública para apresentar o aplicativo e configurar o OAuth: [Sobre o aplicativo](https://listademateriais.vercel.app/sobre-o-aplicativo).
+
 Documentos públicos: [Política de Privacidade](https://listademateriais.vercel.app/politica-de-privacidade) · [Termos de Serviço](https://listademateriais.vercel.app/termos-de-servico).
 
 As rotas profundas usam o fallback SPA configurado em `vercel.json`, para que esses documentos e as demais telas continuem acessíveis diretamente no deployment.
@@ -79,6 +81,8 @@ Em Configurações, conecte a conta Google para criar um arquivo `lista-de-mater
 O proprietário configura no próprio Google Drive se o arquivo será compartilhado com pessoas específicas ou com qualquer pessoa que tenha o link. Quem tiver permissão de edição poderá substituir a cópia completa. O endereço do PWA identifica o arquivo, mas não concede acesso nem funciona como senha.
 
 A integração usa o escopo `drive`, Google Identity Services e Google Picker. O escopo amplo é necessário para que outra pessoa autorizada consiga vincular um arquivo compartilhado apenas pelo ID do Drive. O token fica somente em memória; depois de uma autorização explícita, o aplicativo guarda apenas uma preferência local e tenta renovar a sessão silenciosamente após F5. Para ativar a integração no build, configure `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` e `VITE_GOOGLE_APP_ID` no ambiente Vite, habilite Drive API/Picker API no Google Cloud e registre as origens autorizadas.
+
+Para o consentimento OAuth, use `https://listademateriais.vercel.app/sobre-o-aplicativo` como página inicial pública. Ela identifica o aplicativo, explica Produtos, Receitas, Listas e a finalidade da autorização Google Drive sem exigir login e aponta para a Política de Privacidade e os Termos de Serviço. No Google Cloud, o endereço da Política de Privacidade precisa ser exatamente `https://listademateriais.vercel.app/politica-de-privacidade`; verifique a propriedade do domínio pelo método oferecido na tela de verificação do Google antes de enviar o app para análise. A página estar publicada e responder HTTP 200 não substitui essa verificação de propriedade.
 
 Depois de configurar o compartilhamento no Google Drive, clique em **Verificar alterações** e copie o link do aplicativo novamente. Se o Drive exigir uma chave de recurso, o link precisa carregar `resourcekey`; o aplicativo preserva essa chave quando ela é fornecida pelo Drive ou pelo link colado.
 

@@ -5,11 +5,13 @@ import { ProductDetailPage, ProductEditorPage, ProductsPage } from './features/p
 import { ProductPrintPage } from './features/products/ProductPrintPage'
 import { GuidePage } from './routes/GuidePage'
 import { HomePage } from './routes/HomePage'
+import { AppHomepagePage } from './routes/AppHomepagePage'
 import { PrivacyPolicyPage } from './routes/PrivacyPolicyPage'
 import { TermsOfServicePage } from './routes/TermsOfServicePage'
 
 const rootRoute = createRootRoute({ component: AppShell })
 const catalogRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: ProductsPage })
+const appHomepageRoute = createRoute({ getParentRoute: () => rootRoute, path: 'sobre-o-aplicativo', component: AppHomepagePage })
 const guideRoute = createRoute({ getParentRoute: () => rootRoute, path: 'como-usar', component: GuidePage })
 const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: 'produtos', beforeLoad: () => { throw redirect({ to: '/' }) } })
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: 'configuracoes', component: HomePage })
@@ -24,7 +26,7 @@ const newListRoute = createRoute({ getParentRoute: () => rootRoute, path: 'lista
 const listRoute = createRoute({ getParentRoute: () => rootRoute, path: 'listas/$listId', component: MaterialListDetailPage })
 const editListRoute = createRoute({ getParentRoute: () => rootRoute, path: 'listas/$listId/editar', component: MaterialListEditorPage })
 
-const routeTree = rootRoute.addChildren([catalogRoute, guideRoute, productsRoute, settingsRoute, privacyPolicyRoute, termsOfServiceRoute, newProductRoute, productPrintRoute, productRoute, editProductRoute, listsRoute, newListRoute, listRoute, editListRoute])
+const routeTree = rootRoute.addChildren([catalogRoute, appHomepageRoute, guideRoute, productsRoute, settingsRoute, privacyPolicyRoute, termsOfServiceRoute, newProductRoute, productPrintRoute, productRoute, editProductRoute, listsRoute, newListRoute, listRoute, editListRoute])
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent' })
 

@@ -66,7 +66,9 @@ export function AppShell() {
         </aside>
         <main className="main-content" data-route={pathname}>
           <Outlet />
-          <footer className="app-footer" aria-label="Créditos, documentos legais e código-fonte">
+          <footer className="app-footer" aria-label="Página pública, créditos, documentos legais e código-fonte">
+            <a href="/sobre-o-aplicativo">Sobre o aplicativo</a>
+            <span aria-hidden="true">·</span>
             <a href="https://julio-saito.vercel.app/" target="_blank" rel="noopener noreferrer">Feito por Julio Saito</a>
             <span aria-hidden="true">·</span>
             <a href="https://github.com/saitodisse/lista-de-materiais" target="_blank" rel="noopener noreferrer">Código no GitHub</a>
