@@ -9,6 +9,7 @@ Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 - Sincronização manual opcional com Google Drive usando OAuth `drive.file`, Google Picker e o mesmo `LocalDataExport` versão 1.
 - Vínculo persistente do arquivo, consulta de permissões, datas de cópia remota e confirmação explícita para receber ou substituir dados.
 - Detecção de divergência com referência normalizada, precondição `If-Match` quando disponível e tratamento de falhas sem repetir escritas incertas.
+- Páginas públicas de Política de Privacidade e Termos de Serviço para a configuração do consentimento OAuth.
 
 ## 0.5.0 — 2026-09-01
 

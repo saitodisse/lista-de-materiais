@@ -31,6 +31,8 @@ describe('shell do aplicativo', () => {
     expect(portfolio).toHaveAttribute('target', '_blank')
     expect(repository).toHaveAttribute('href', 'https://github.com/saitodisse/lista-de-materiais')
     expect(repository).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Privacidade' })).toHaveAttribute('href', '/politica-de-privacidade')
+    expect(screen.getByRole('link', { name: 'Termos de Serviço' })).toHaveAttribute('href', '/termos-de-servico')
   })
 
   it('mantém Configurações e Plano de produção como acessos secundários no rodapé da barra lateral', async () => {

@@ -4,6 +4,10 @@ PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de
 
 Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.vercel.app).
 
+Documentos públicos: [Política de Privacidade](https://listademateriais.vercel.app/politica-de-privacidade) · [Termos de Serviço](https://listademateriais.vercel.app/termos-de-servico).
+
+As rotas profundas usam o fallback SPA configurado em `vercel.json`, para que esses documentos e as demais telas continuem acessíveis diretamente no deployment.
+
 ## O que já entrega
 
 - Cadastro, edição, consulta e exclusão protegida de Produtos.
