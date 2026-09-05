@@ -2,7 +2,7 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
-## Próxima versão
+## 0.6.0 — 2026-09-05
 
 ### Added
 
