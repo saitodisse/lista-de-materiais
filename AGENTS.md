@@ -26,7 +26,7 @@
 - A persistência usa Dexie e transações. Componentes não devem acessar `indexedDB` diretamente.
 - Importar JSON deve validar o formato e a integridade antes de iniciar a transação que substitui Produtos, Listas, entradas e metadados deste aparelho. Peça confirmação explícita antes da substituição.
 - O arquivo do Google Drive usa o mesmo `LocalDataExport` versão 1. A exportação é uma leitura transacional consistente das três tabelas.
-- A autorização Google usa `drive.file`; tokens ficam somente em memória. Não persista tokens, chaves da API, nem dados autenticados em URL, IndexedDB, logs ou service worker.
+- A autorização Google usa o escopo `drive` para permitir que uma pessoa autorizada vincule um arquivo compartilhado apenas pelo ID; tokens ficam somente em memória. A preferência de reconexão pode ficar no `localStorage`, mas nunca persista tokens, chaves da API, nem dados autenticados em URL, IndexedDB, logs ou service worker.
 - O vínculo do Drive fica em uma tabela Dexie separada de `meta`. Preserve-o ao importar JSON, carregar demonstração ou limpar o catálogo. Desvincular remove somente o vínculo local.
 - Antes de enviar, consulte e valide o arquivo remoto. Compare conteúdo normalizado sem `exportedAt` com a última referência; diante de divergência ou ausência de referência, exija uma escolha explícita. Use `If-Match` quando houver ETag e trate `412` como conflito; não repita uma gravação de resultado incerto.
 - Receber exige validação e confirmação da substituição local. Falhas de rede, permissão, arquivo inexistente, JSON inválido, expiração do token e limites do Drive não podem alterar dados ou referência anterior.

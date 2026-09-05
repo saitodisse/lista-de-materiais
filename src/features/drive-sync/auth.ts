@@ -1,6 +1,7 @@
 const GIS_URL = 'https://accounts.google.com/gsi/client'
 const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file openid email'
+export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive openid email'
+export const GOOGLE_CONNECTION_PREFERENCE_KEY = 'lista-de-materiais:google-drive-connected'
 
 interface TokenResponse {
   access_token?: string
@@ -13,7 +14,6 @@ interface TokenClient {
   requestAccessToken: (options?: { prompt?: string }) => void
 }
 
-let tokenClient: TokenClient | null = null
 let session: { token: string; expiresAt: number } | null = null
 
 function clientId(): string {
@@ -40,26 +40,34 @@ function loadScript(src: string, id: string): Promise<void> {
   })
 }
 
-async function getTokenClient(): Promise<TokenClient> {
+function hasGoogleConnectionPreference(): boolean {
+  try { return window.localStorage.getItem(GOOGLE_CONNECTION_PREFERENCE_KEY) === '1' }
+  catch { return false }
+}
+
+function rememberGoogleConnection(): void {
+  try { window.localStorage.setItem(GOOGLE_CONNECTION_PREFERENCE_KEY, '1') }
+  catch { /* localStorage may be unavailable in a restricted browser context. */ }
+}
+
+function forgetGoogleConnection(): void {
+  try { window.localStorage.removeItem(GOOGLE_CONNECTION_PREFERENCE_KEY) }
+  catch { /* localStorage may be unavailable in a restricted browser context. */ }
+}
+
+export { hasGoogleConnectionPreference }
+
+async function requestAccessToken(prompt: '' | 'consent'): Promise<string> {
   await loadScript(GIS_URL, 'google-identity-services')
   const oauth2 = window.google?.accounts?.oauth2
   if (!oauth2) throw new Error('A biblioteca de autenticação Google não está disponível.')
-  tokenClient ??= oauth2.initTokenClient({
-    client_id: clientId(),
-    scope: DRIVE_SCOPE,
-    callback: () => undefined,
-  }) as TokenClient
-  return tokenClient
-}
-
-export async function connectGoogleDrive(): Promise<string> {
-  await getTokenClient()
   return new Promise((resolve, reject) => {
     const callbackClient = window.google?.accounts?.oauth2?.initTokenClient({
       client_id: clientId(),
-      scope: DRIVE_SCOPE,
+      scope: GOOGLE_DRIVE_SCOPE,
       callback: (response: TokenResponse) => {
         if (!response.access_token) {
+          session = null
           reject(new Error(response.error_description ?? 'A autorização Google foi cancelada.'))
           return
         }
@@ -67,8 +75,21 @@ export async function connectGoogleDrive(): Promise<string> {
         resolve(response.access_token)
       },
     }) as TokenClient
-    callbackClient.requestAccessToken({ prompt: 'consent' })
+    callbackClient.requestAccessToken({ prompt })
   })
+}
+
+export async function connectGoogleDrive(): Promise<string> {
+  const token = await requestAccessToken('consent')
+  rememberGoogleConnection()
+  return token
+}
+
+export async function restoreGoogleDrive(): Promise<string> {
+  if (!hasGoogleConnectionPreference()) throw new Error('Nenhuma sessão Google foi marcada para restauração.')
+  const token = await requestAccessToken('')
+  rememberGoogleConnection()
+  return token
 }
 
 export function getGoogleAccessToken(): string {
@@ -82,6 +103,7 @@ export function isGoogleConnected(): boolean {
 
 export function disconnectGoogleDrive(): void {
   session = null
+  forgetGoogleConnection()
 }
 
 export async function getGoogleAccountEmail(token: string): Promise<string | null> {

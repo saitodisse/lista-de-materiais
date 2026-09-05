@@ -18,6 +18,7 @@ export function PrivacyPolicyPage() {
 
       <LegalSection title="3. Google Drive opcional">
         <p>Você pode autorizar a integração com o Google para criar, consultar ou atualizar um arquivo JSON escolhido no seu Google Drive. O acesso acontece somente quando você inicia uma ação na interface e segue as permissões definidas no Google Drive.</p>
+        <p>Para permitir que outra pessoa autorizada vincule um arquivo compartilhado apenas pelo ID, a integração solicita o escopo de gerenciamento do Google Drive. O aplicativo usa esse acesso somente para o arquivo e para as ações de sincronização que você inicia.</p>
         <p>O token temporário recebido do Google fica somente na memória da sessão do navegador. O aplicativo não grava o token, a chave secreta do cliente ou credenciais em IndexedDB, URL, exportação, logs ou servidor próprio.</p>
         <p>Quando você envia ou recebe dados, o conteúdo completo da cópia local pode ser transmitido ao arquivo do Drive selecionado. O Google trata a autenticação, a autorização e a retenção desse arquivo segundo as próprias políticas e configurações da sua conta.</p>
       </LegalSection>

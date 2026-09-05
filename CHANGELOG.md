@@ -2,6 +2,13 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.6.1 — 2026-09-05
+
+### Fixed
+
+- A sessão Google pode ser restaurada silenciosamente após F5 usando somente uma preferência local, sem persistir o token.
+- O vínculo por ID passou a solicitar o escopo Drive necessário para arquivos compartilhados com outra conta; links com `resourcekey` são preservados ao copiar o compartilhamento.
+
 ## 0.6.0 — 2026-09-05
 
 ### Added

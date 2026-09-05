@@ -3,7 +3,7 @@ import { Cloud, Copy, ExternalLink, FilePlus2, FolderOpen, LogOut, RefreshCw, Se
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { DriveSyncRecord } from '../../db/database'
 import { ErrorNotice } from '../../components/Page'
-import { disconnectGoogleDrive, getGoogleAccessToken, isGoogleConnected } from './auth'
+import { disconnectGoogleDrive, getGoogleAccessToken, getGoogleAccountEmail, hasGoogleConnectionPreference, isGoogleConnected, restoreGoogleDrive } from './auth'
 import { describeDriveApiError, DriveApiError } from './client'
 import { chooseDriveFile } from './picker'
 import { parseDriveReference } from './links'
@@ -21,7 +21,7 @@ function explainError(reason: unknown): string {
   if (reason instanceof DriveApiError) {
     if (reason.status === 401) return 'A autorização Google expirou. Conecte a conta novamente.'
     if (reason.status === 403) return describeDriveApiError(reason)
-    if (reason.status === 404) return 'O arquivo não existe ou esta conta ainda não tem acesso a ele. Confira o compartilhamento no Google Drive.'
+    if (reason.status === 404) return 'O Google Drive não encontrou este arquivo para a conta conectada. Confirme o compartilhamento, autorize novamente o acesso Drive e, se o link usar uma chave de recurso, cole o link completo do Drive com resourcekey.'
     if (reason.status === 412) return 'O arquivo foi alterado por outra pessoa durante o envio. Consulte a cópia mais recente e escolha novamente.'
     if (reason.retryable) return 'O Google Drive está temporariamente indisponível ou limitou as solicitações. Tente novamente mais tarde.'
     return reason.message
@@ -66,6 +66,7 @@ function ConfirmationDialog({ title, description, actionLabel, onConfirm, onClos
 export function DriveSyncPanel() {
   const record = useLiveQuery(() => getDriveSync(), [])
   const [connected, setConnected] = useState(isGoogleConnected())
+  const [restoring, setRestoring] = useState(() => !isGoogleConnected() && hasGoogleConnectionPreference())
   const [accountEmail, setAccountEmail] = useState<string | null>(null)
   const [reference, setReference] = useState(initialDriveReference)
   const [busy, setBusy] = useState<string | null>(null)
@@ -74,6 +75,27 @@ export function DriveSyncPanel() {
   const [confirm, setConfirm] = useState<'receive' | 'create' | 'conflict-receive' | null>(null)
   const [conflict, setConflict] = useState<DriveSyncConflictError | null>(null)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!restoring) return
+    let active = true
+    void restoreGoogleDrive()
+      .then((token) => getGoogleAccountEmail(token))
+      .then((email) => {
+        if (!active) return
+        setConnected(true)
+        setAccountEmail(email)
+      })
+      .catch(() => {
+        if (!active) return
+        setConnected(false)
+        setAccountEmail(null)
+      })
+      .finally(() => {
+        if (active) setRestoring(false)
+      })
+    return () => { active = false }
+  }, [restoring])
 
   const run = async (name: string, operation: () => Promise<void>) => {
     setBusy(name)
@@ -90,6 +112,7 @@ export function DriveSyncPanel() {
   const connect = () => void run('connect', async () => {
     const email = await connectAndGetAccount()
     setConnected(true)
+    setRestoring(false)
     setAccountEmail(email)
     setSuccess(email ? `Conectado como ${email}.` : 'Conta Google conectada nesta sessão.')
   })
@@ -145,12 +168,13 @@ export function DriveSyncPanel() {
     setSuccess(decision === 'receive' ? 'Dados recebidos do Google Drive.' : 'Arquivo do Drive substituído pelos dados locais.')
   })
 
-  const copyLink = async () => {
+  const copyLink = () => void run('copy', async () => {
     if (!record) return
-    await navigator.clipboard?.writeText(getDriveAppLink(record))
+    const current = connected ? (await refreshDriveShare()).record : record
+    await navigator.clipboard?.writeText(getDriveAppLink(current))
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1800)
-  }
+  })
 
   const disconnect = () => void run('disconnect', async () => {
     await disconnectDriveShare()
@@ -160,6 +184,7 @@ export function DriveSyncPanel() {
   const disconnectAccount = () => {
     disconnectGoogleDrive()
     setConnected(false)
+    setRestoring(false)
     setAccountEmail(null)
     setSuccess('A sessão Google foi encerrada neste aparelho.')
   }
@@ -172,7 +197,7 @@ export function DriveSyncPanel() {
     </div>
     <div className="drive-sync-warning"><strong>Compartilhamento do Drive controla o acesso.</strong> Quem puder editar o arquivo poderá substituir todos os Produtos, Receitas e Listas. O link não é uma senha nem uma forma de criptografia.</div>
     <div className="drive-sync-toolbar">
-      <button type="button" className="button secondary" onClick={connect} disabled={busy !== null}><Cloud size={17} /> {connected ? 'Reconectar Google' : 'Conectar Google'}</button>
+      <button type="button" className="button secondary" onClick={connect} disabled={busy !== null || restoring}><Cloud size={17} /> {restoring ? 'Reconectando Google…' : connected ? 'Reconectar Google' : 'Conectar Google'}</button>
       {connected && <><span className="drive-account">{accountEmail ?? 'conta conectada nesta sessão'}</span><button type="button" className="button quiet" onClick={disconnectAccount} disabled={busy !== null}>Desconectar conta</button></>}
     </div>
     <div className="drive-sync-create">
@@ -185,7 +210,7 @@ export function DriveSyncPanel() {
       <small>Vincular consulta e valida a cópia remota; a importação só acontece depois da confirmação.</small>
     </div>
     {record && <div className="drive-sync-status">
-      <div className="drive-sync-status-head"><div><p className="eyebrow">arquivo vinculado</p><strong>{record.fileName ?? record.fileId}</strong><code>{record.fileId}</code><span className="drive-permission-note">{record.canModifyContent === false ? 'somente leitura neste arquivo' : 'permissão de envio disponível'}</span></div><span className="drive-sync-status-actions"><button type="button" className="icon-button" aria-label="Copiar link do aplicativo" title={copied ? 'Link copiado' : 'Copiar link'} onClick={() => void copyLink()} disabled={busy !== null}><Copy size={16} /></button><a className="icon-button" aria-label="Abrir arquivo no Google Drive" title="Abrir no Google Drive" href={driveWebLink(record)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} /></a></span></div>
+      <div className="drive-sync-status-head"><div><p className="eyebrow">arquivo vinculado</p><strong>{record.fileName ?? record.fileId}</strong><code>{record.fileId}</code><span className="drive-permission-note">{record.canModifyContent === false ? 'somente leitura neste arquivo' : 'permissão de envio disponível'}</span></div><span className="drive-sync-status-actions"><button type="button" className="icon-button" aria-label="Copiar link do aplicativo" title={copied ? 'Link copiado' : 'Copiar link'} onClick={copyLink} disabled={busy !== null}><Copy size={16} /></button><a className="icon-button" aria-label="Abrir arquivo no Google Drive" title="Abrir no Google Drive" href={driveWebLink(record)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} /></a></span></div>
       <dl className="drive-sync-dates"><div><dt>Última cópia remota consultada</dt><dd>{formatDate(record.lastRemoteModifiedTime)}</dd></div><div><dt>Último envio</dt><dd>{formatDate(record.lastUploadedAt)}</dd></div><div><dt>Último recebimento</dt><dd>{formatDate(record.lastDownloadedAt)}</dd></div></dl>
       <div className="data-actions"><button type="button" className="button quiet" onClick={refresh} disabled={!connected || busy !== null}><RefreshCw size={16} /> {busy === 'refresh' ? 'Consultando…' : 'Verificar alterações'}</button><button type="button" className="button quiet" onClick={send} disabled={!connected || busy !== null || record.canModifyContent === false}><Send size={16} /> Enviar dados</button><button type="button" className="button quiet" onClick={receive} disabled={!connected || busy !== null}><Upload size={16} /> Receber dados</button><button type="button" className="button quiet" onClick={disconnect} disabled={busy !== null}><LogOut size={16} /> Desvincular</button></div>
     </div>}

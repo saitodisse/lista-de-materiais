@@ -78,7 +78,9 @@ Em Configurações, conecte a conta Google para criar um arquivo `lista-de-mater
 
 O proprietário configura no próprio Google Drive se o arquivo será compartilhado com pessoas específicas ou com qualquer pessoa que tenha o link. Quem tiver permissão de edição poderá substituir a cópia completa. O endereço do PWA identifica o arquivo, mas não concede acesso nem funciona como senha.
 
-A integração usa `drive.file`, Google Identity Services e Google Picker. O token fica somente em memória e pode ser solicitado novamente após F5 ou expiração. Para ativar a integração no build, configure `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` e `VITE_GOOGLE_APP_ID` no ambiente Vite, habilite Drive API/Picker API no Google Cloud e registre as origens autorizadas.
+A integração usa o escopo `drive`, Google Identity Services e Google Picker. O escopo amplo é necessário para que outra pessoa autorizada consiga vincular um arquivo compartilhado apenas pelo ID do Drive. O token fica somente em memória; depois de uma autorização explícita, o aplicativo guarda apenas uma preferência local e tenta renovar a sessão silenciosamente após F5. Para ativar a integração no build, configure `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` e `VITE_GOOGLE_APP_ID` no ambiente Vite, habilite Drive API/Picker API no Google Cloud e registre as origens autorizadas.
+
+Depois de configurar o compartilhamento no Google Drive, clique em **Verificar alterações** e copie o link do aplicativo novamente. Se o Drive exigir uma chave de recurso, o link precisa carregar `resourcekey`; o aplicativo preserva essa chave quando ela é fornecida pelo Drive ou pelo link colado.
 
 Quando duas cópias divergem, o aplicativo oferece receber do Drive, substituir o Drive ou cancelar. A atualização envia `If-Match` quando o Drive retorna uma ETag; uma resposta `412` exige nova consulta. Sem uma precondição aceita pelo serviço, dois envios simultâneos ainda podem se sobrescrever.
 
