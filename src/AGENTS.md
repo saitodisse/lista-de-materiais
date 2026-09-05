@@ -12,7 +12,9 @@
 - Preserve os contratos `ProductRecord`, `MaterialList` e `MaterialListEntry` de `domain/catalog.ts`.
 - Escritas que afetam registros relacionados devem ser transacionais. Importar só pode limpar e substituir dados depois de `parseLocalDataExport` e `validateLocalDataExport` terem passado.
 - A demonstração é opt-in. Limpar tudo remove Produtos, Listas e entradas em transação e mantém o estado vazio após F5.
-- Não introduza chamadas de rede para dados do domínio. Este aplicativo deve continuar útil sem rede depois de instalado.
+- Chamadas de rede do domínio só podem ocorrer no fluxo manual e explícito do Google Drive. O catálogo local e os cálculos continuam úteis sem rede depois de instalados.
+- `features/drive-sync` concentra OAuth, Picker, cliente HTTP, normalização, conflitos e estados da interface. Não acesse o Drive diretamente em componentes fora dessa fatia.
+- Tokens de sessão ficam em memória; o vínculo persistente fica em `db/database.ts` na tabela `driveSync`, separado de `meta` e preservado pela importação.
 
 ## Roteamento, busca e PWA
 

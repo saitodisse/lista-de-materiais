@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAllLocalData, db, deleteProduct, exportLocalData, importLocalData, replaceAllWithDemo, resetDatabaseForTest, saveMaterialList, saveProduct } from './database'
+import { clearAllLocalData, db, deleteProduct, exportLocalData, getDriveSync, importLocalData, replaceAllWithDemo, resetDatabaseForTest, saveDriveSync, saveMaterialList, saveProduct } from './database'
 import { ProductDependencyError, type ProductRecord } from '../domain/catalog'
 import { DEMO_LIST_ID, DEMO_PRODUCT_CODES } from '../features/demo/demoData'
 
@@ -98,5 +98,13 @@ describe('persistência Dexie', () => {
     })).rejects.toThrow(/ao menos um Produto/i)
 
     expect(await db.products.get('atual')).toMatchObject({ name: 'atual' })
+  })
+
+  it('mantém o vínculo do Drive separado ao importar e limpar o catálogo', async () => {
+    await saveDriveSync({ key: 'active', fileId: 'file-1', link: 'link', resourceKey: null, fileName: 'dados.json', accountEmail: null, linkedAt: '2026-01-01', lastRemoteModifiedTime: null, lastRemoteCheckedAt: null, lastUploadedAt: null, lastDownloadedAt: null, lastObservedFingerprint: null, lastObservedVersion: null, lastSyncedFingerprint: null })
+    await importLocalData({ format: 'lista-de-materiais', version: 1, exportedAt: '2026-01-02', products: [rawMaterial('importado')], materialLists: [], materialListEntries: [] })
+    expect(await getDriveSync()).toMatchObject({ fileId: 'file-1' })
+    await clearAllLocalData()
+    expect(await getDriveSync()).toMatchObject({ fileId: 'file-1' })
   })
 })

@@ -33,3 +33,9 @@
 **Cópia JSON** é o arquivo local que reúne Produtos, Receitas, Listas e entradas. Sua importação substitui todo o catálogo local depois de validação e confirmação.
 
 **Demonstração de pizzas** é um conjunto opcional de dados locais: matérias-primas, massa e molho semiacabados, pizza de muçarela unitária, embalagem, pacote com três pizzas e uma Lista de Materiais correspondente.
+
+**Compartilhamento Google Drive** é uma cópia manual autorizada do `LocalDataExport` versão 1. O arquivo remoto não substitui o IndexedDB: somente as ações explícitas de receber ou enviar alteram uma das cópias.
+
+**Vínculo do Drive** identifica um arquivo, a chave de recurso opcional, datas apresentadas e a referência normalizada da última sincronização neste aparelho. O vínculo fica separado dos metadados locais e sobrevive à importação JSON, à demonstração e à limpeza.
+
+**Conflito de sincronização** ocorre quando o arquivo remoto mudou desde a última referência conhecida, ou quando ainda não existe referência local. O usuário deve escolher receber, substituir o remoto ou cancelar.

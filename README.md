@@ -1,6 +1,6 @@
 # Lista de Materiais
 
-PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de Materiais (BOM) sem sair do aparelho. Os dados são armazenados no IndexedDB do navegador; não existe backend, conta nem sincronização.
+PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de Materiais (BOM) sem sair do aparelho. Os dados são armazenados no IndexedDB do navegador; a sincronização opcional é manual e usa um arquivo autorizado do Google Drive.
 
 Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.vercel.app).
 
@@ -17,13 +17,14 @@ Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.ver
 - BOM aninhada, materiais terminais consolidados, árvore expansível, custos de compra e valores de venda quando houver dados suficientes.
 - Demonstração opcional de um pacote com três pizzas de muçarela e um único controle confirmado para adicioná-la ou limpar todos os dados locais.
 - Exportação e importação JSON local, com validação e confirmação antes de substituir o catálogo.
+- Sincronização manual opcional com Google Drive: criar, vincular, enviar, receber e desvincular uma cópia JSON autorizada.
 - Guia **Como usar** com cadeia didática de pizzas, árvores calculadas e tours interativos manuais.
 - Uso offline após a primeira abertura online e ativação do service worker, inclusive ao atualizar uma rota com F5.
 - Rodapé discreto em todas as rotas, com crédito para Julio Saito, portfólio e acesso ao repositório público.
 
 ## Limites intencionais
 
-Este corte não inclui API, conta, sincronização, colaboração, imagens, importação de planilhas, preço tabelado, ordem de produção, data, lote ou status. O JSON é uma cópia manual; ele não sincroniza aparelhos.
+Este corte não inclui backend próprio, sincronização automática, mesclagem de registros, colaboração em tempo real, imagens, importação de planilhas, preço tabelado, ordem de produção, data, lote ou status. O Google Drive é uma cópia manual sujeita às permissões do arquivo.
 
 ## Executar localmente
 
@@ -67,7 +68,17 @@ Na tela inicial:
 - **Importar JSON** lê uma cópia desse formato, valida códigos, Receitas e referências e pede confirmação antes de substituir todos os dados locais em uma única transação.
 - **Adicionar demonstração** inclui a receita de pizzas de muçarela. Quando a demonstração está presente, o botão passa a **Limpar tudo** e remove Produtos, Listas e entradas após confirmação.
 
-Mantenha uma exportação antes de usar importação ou limpeza. Nenhuma dessas ações envia dados a um servidor.
+### Compartilhar pelo Google Drive
+
+Em Configurações, conecte a conta Google para criar um arquivo `lista-de-materiais.json` ou colar o link/ID de um arquivo compartilhado. Vincular apenas consulta e valida a cópia remota. **Enviar dados** e **Receber dados** são ações separadas e pedem confirmação quando substituem conteúdo.
+
+O proprietário configura no próprio Google Drive se o arquivo será compartilhado com pessoas específicas ou com qualquer pessoa que tenha o link. Quem tiver permissão de edição poderá substituir a cópia completa. O endereço do PWA identifica o arquivo, mas não concede acesso nem funciona como senha.
+
+A integração usa `drive.file`, Google Identity Services e Google Picker. O token fica somente em memória e pode ser solicitado novamente após F5 ou expiração. Para ativar a integração no build, configure `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` e `VITE_GOOGLE_APP_ID` no ambiente Vite, habilite Drive API/Picker API no Google Cloud e registre as origens autorizadas.
+
+Quando duas cópias divergem, o aplicativo oferece receber do Drive, substituir o Drive ou cancelar. A atualização envia `If-Match` quando o Drive retorna uma ETag; uma resposta `412` exige nova consulta. Sem uma precondição aceita pelo serviço, dois envios simultâneos ainda podem se sobrescrever.
+
+Mantenha uma exportação antes de usar importação, limpeza ou recebimento do Drive. Exportar, importar e limpar permanecem locais; o envio ao Drive só ocorre quando você escolhe explicitamente essa ação.
 
 ## Offline não é conectividade
 

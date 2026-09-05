@@ -4,6 +4,7 @@ import { Download, Upload } from 'lucide-react'
 import { ErrorNotice, PageHeader } from '../components/Page'
 import { db, exportLocalData, importLocalData } from '../db/database'
 import { DemoResetButton } from '../features/demo/DemoResetButton'
+import { DriveSyncPanel } from '../features/drive-sync/DriveSyncPanel'
 
 export function HomePage() {
   const data = useLiveQuery(async () => ({ products: await db.products.count(), lists: await db.materialLists.count(), demo: await db.meta.get('demo-state') }))
@@ -51,6 +52,7 @@ export function HomePage() {
         <div className="section-heading"><p className="eyebrow">cópia local</p><h2>Exportar ou importar dados</h2><p>Use o JSON para levar uma cópia a outro aparelho ou recuperar os dados manualmente. Importar substitui o conteúdo deste aparelho.</p></div>
         <div className="data-actions"><button type="button" className="button quiet" data-guide="json-export" onClick={() => void downloadExport()}><Download size={17} /> Exportar JSON</button><button type="button" className="button quiet" data-guide="json-import" disabled={isImporting} onClick={() => importInput.current?.click()}><Upload size={17} /> {isImporting ? 'Importando…' : 'Importar JSON'}</button><input ref={importInput} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void importFile(event)} /></div>
       </section>
+      <DriveSyncPanel />
       <section className="demo-note demo-control">
         <div><p className="eyebrow">{hasDemo ? 'demonstração carregada' : 'demonstração opcional'}</p><h2>{hasDemo ? 'Limpar todos os dados' : 'Carregar a demonstração de pizzas'}</h2><p>{hasDemo ? 'O mesmo controle limpa Produtos, Listas e entradas deste aparelho após a confirmação.' : 'Limpa a base atual e carrega as mesmas matérias-primas, semiacabados, pizza, embalagem, Produto Final e plano usados no guia.'}</p></div>
         <DemoResetButton action={hasDemo ? 'clear' : 'demo'} className="button quiet" label={hasDemo ? 'Limpar tudo' : 'Limpar e carregar demonstração'} />

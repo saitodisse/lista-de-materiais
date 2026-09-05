@@ -26,11 +26,31 @@ interface MetaRecord {
   value: string
 }
 
+export interface DriveSyncRecord {
+  key: 'active'
+  fileId: string
+  link: string
+  resourceKey: string | null
+  fileName: string | null
+  accountEmail: string | null
+  canDownload?: boolean | null
+  canModifyContent?: boolean | null
+  linkedAt: string
+  lastRemoteModifiedTime: string | null
+  lastRemoteCheckedAt: string | null
+  lastUploadedAt: string | null
+  lastDownloadedAt: string | null
+  lastObservedFingerprint: string | null
+  lastObservedVersion: string | null
+  lastSyncedFingerprint: string | null
+}
+
 class MaterialsDatabase extends Dexie {
   products!: EntityTable<ProductRecord, 'id'>
   materialLists!: EntityTable<MaterialList, 'id'>
   materialListEntries!: Table<MaterialListEntry, [string, string]>
   meta!: EntityTable<MetaRecord, 'key'>
+  driveSync!: EntityTable<DriveSyncRecord, 'key'>
 
   constructor() {
     super('lista-de-materiais')
@@ -120,6 +140,13 @@ class MaterialsDatabase extends Dexie {
         product.category = normalizeProductCategory(product.category)
       })
     })
+    this.version(7).stores({
+      products: 'id, productCode, name, category',
+      materialLists: 'id, name, updatedAt',
+      materialListEntries: '[listId+productCode], listId, productCode',
+      meta: 'key',
+      driveSync: 'key',
+    })
   }
 }
 
@@ -173,12 +200,26 @@ export async function clearAllLocalData(): Promise<void> {
 }
 
 export async function exportLocalData(): Promise<LocalDataExport> {
-  const [products, materialLists, materialListEntries] = await Promise.all([
-    db.products.toArray(),
-    db.materialLists.toArray(),
-    db.materialListEntries.toArray(),
-  ])
-  return { format: 'lista-de-materiais', version: 1, exportedAt: new Date().toISOString(), products, materialLists, materialListEntries }
+  return db.transaction('r', db.products, db.materialLists, db.materialListEntries, async () => {
+    const [products, materialLists, materialListEntries] = await Promise.all([
+      db.products.toArray(),
+      db.materialLists.toArray(),
+      db.materialListEntries.toArray(),
+    ])
+    return { format: 'lista-de-materiais', version: 1, exportedAt: new Date().toISOString(), products, materialLists, materialListEntries }
+  })
+}
+
+export async function getDriveSync(): Promise<DriveSyncRecord | undefined> {
+  return db.driveSync.get('active')
+}
+
+export async function saveDriveSync(record: DriveSyncRecord): Promise<void> {
+  await db.driveSync.put(record)
+}
+
+export async function clearDriveSync(): Promise<void> {
+  await db.driveSync.delete('active')
 }
 
 export async function importLocalData(value: unknown): Promise<void> {
