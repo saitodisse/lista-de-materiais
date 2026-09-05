@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { LocalDataExport } from '../../domain/catalog'
-import { DriveApiError, downloadDriveJson, updateDriveJsonFile } from './client'
+import { describeDriveApiError, DriveApiError, downloadDriveJson, updateDriveJsonFile } from './client'
 
 const validData: LocalDataExport = { format: 'lista-de-materiais', version: 1, exportedAt: '2026-01-01T00:00:00.000Z', products: [], materialLists: [], materialListEntries: [] }
 
@@ -30,5 +30,9 @@ describe('cliente Google Drive', () => {
   it('transforma erro HTTP em DriveApiError sem tentar um novo envio', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Precondition Failed', errors: [{ reason: 'conditionNotMet' }] } }), { status: 412 }))
     await expect(updateDriveJsonFile('token', 'file-1', validData, null, '"old"')).rejects.toMatchObject({ status: 412, reason: 'conditionNotMet' } satisfies Partial<DriveApiError>)
+  })
+
+  it('explica quando o projeto ainda não habilitou a Drive API', () => {
+    expect(describeDriveApiError(new DriveApiError('Drive API has not been used', 403, 'accessNotConfigured'))).toMatch(/não está habilitada/i)
   })
 })

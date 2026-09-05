@@ -34,6 +34,18 @@ export class DriveApiError extends Error {
   }
 }
 
+export function describeDriveApiError(error: DriveApiError): string {
+  if (error.reason === 'accessNotConfigured') return 'A Google Drive API não está habilitada no projeto deste cliente OAuth. Habilite a Drive API no Google Cloud e tente novamente.'
+  if (error.reason === 'insufficientPermissions') return 'A autorização Google não concedeu a permissão necessária para criar ou alterar este arquivo. Desconecte a conta, autorize novamente e tente outra vez.'
+  if (error.reason === 'insufficientFilePermissions') return 'A conta tem acesso de leitura, mas não pode alterar este arquivo. Peça permissão de editor ao proprietário.'
+  if (error.reason === 'appNotAuthorizedToFile') return 'O aplicativo ainda não foi autorizado para este arquivo. Escolha o arquivo pelo Google Picker antes de vinculá-lo.'
+  if (error.reason === 'storageQuotaExceeded') return 'A conta Google não tem espaço disponível para criar este arquivo.'
+  if (error.reason === 'dailyLimitExceeded' || error.reason === 'rateLimitExceeded' || error.reason === 'userRateLimitExceeded') return 'O projeto ou a conta atingiu o limite de solicitações do Google Drive. Aguarde e tente novamente.'
+  if (error.reason === 'domainPolicy') return 'Uma política da organização Google Workspace bloqueou esta operação.'
+  if (error.status === 403) return `O Google Drive recusou a operação${error.reason ? ` (${error.reason})` : ''}. Verifique a permissão da conta e a configuração da API.`
+  return error.message
+}
+
 function resourceKeyHeader(fileId: string, resourceKey: string | null | undefined): Record<string, string> {
   return resourceKey ? { 'X-Goog-Drive-Resource-Keys': `${fileId}/${resourceKey}` } : {}
 }
@@ -141,4 +153,3 @@ export async function updateDriveJsonFile(token: string, fileId: string, data: L
   })
   return { metadata: mapMetadata(value), etag: response.headers.get('etag') }
 }
-

@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import type { DriveSyncRecord } from '../../db/database'
 import { ErrorNotice } from '../../components/Page'
 import { disconnectGoogleDrive, getGoogleAccessToken, isGoogleConnected } from './auth'
-import { DriveApiError } from './client'
+import { describeDriveApiError, DriveApiError } from './client'
 import { chooseDriveFile } from './picker'
 import { parseDriveReference } from './links'
 import { attachDriveFile, connectAndGetAccount, createDriveShare, disconnectDriveShare, getDriveAppLink, receiveDriveShare, refreshDriveShare, sendDriveShare, DriveSyncConflictError, LocalChangedDuringSyncError, type SyncDecision } from './sync'
@@ -20,7 +20,7 @@ function explainError(reason: unknown): string {
   if (reason instanceof DriveSyncConflictError) return reason.message
   if (reason instanceof DriveApiError) {
     if (reason.status === 401) return 'A autorização Google expirou. Conecte a conta novamente.'
-    if (reason.status === 403) return 'A conta está sem permissão para esta operação ou o Google bloqueou a solicitação por política ou limite.'
+    if (reason.status === 403) return describeDriveApiError(reason)
     if (reason.status === 404) return 'O arquivo não existe ou esta conta ainda não tem acesso a ele. Confira o compartilhamento no Google Drive.'
     if (reason.status === 412) return 'O arquivo foi alterado por outra pessoa durante o envio. Consulte a cópia mais recente e escolha novamente.'
     if (reason.retryable) return 'O Google Drive está temporariamente indisponível ou limitou as solicitações. Tente novamente mais tarde.'
