@@ -2,6 +2,13 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.6.3 — 2026-09-05
+
+### Fixed
+
+- O HTML inicial agora identifica o Lista de Materiais, descreve Produtos, Receitas, Listas, BOM e a cópia opcional no Google Drive antes da hidratação do React.
+- A orientação de configuração passa a exigir um domínio ou subdomínio próprio para a verificação do OAuth, em vez de tratar o alias compartilhado da Vercel como prova de propriedade.
+
 ## 0.6.2 — 2026-09-05
 
 ### Added

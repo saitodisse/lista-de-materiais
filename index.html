@@ -5,11 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#173b45" />
+    <meta name="application-name" content="Lista de Materiais" />
     <meta name="description" content="Lista de Materiais: catálogo local de Produtos, Receitas e Listas de Materiais, com cópias JSON opcionais no Google Drive." />
     <title>Lista de Materiais</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="static-homepage">
+        <p class="static-homepage-eyebrow">aplicativo local-first</p>
+        <h1>Lista de Materiais</h1>
+        <p>O Lista de Materiais ajuda a cadastrar Produtos, organizar suas Receitas e montar Listas de Materiais com uma árvore BOM calculada no próprio navegador.</p>
+        <p>Os dados ficam neste aparelho e o aplicativo funciona offline depois da primeira abertura. A cópia opcional no Google Drive é manual: depois de autorizar, você escolhe quando criar, consultar, enviar ou receber um arquivo JSON.</p>
+        <nav aria-label="Documentos públicos do aplicativo">
+          <a href="/politica-de-privacidade">Política de Privacidade</a>
+          <a href="/termos-de-servico">Termos de Serviço</a>
+          <a href="/sobre-o-aplicativo">Sobre o aplicativo</a>
+        </nav>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
