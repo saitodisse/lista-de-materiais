@@ -37,7 +37,7 @@ export class LocalChangedDuringSyncError extends Error {
 function appLink(fileId: string, resourceKey?: string | null): string {
   const params = new URLSearchParams({ drive: fileId })
   if (resourceKey) params.set('resourceKey', resourceKey)
-  return `https://listademateriais.vercel.app/configuracoes#${params.toString()}`
+  return `https://lista-de-materiais.com.br/configuracoes#${params.toString()}`
 }
 
 function recordFromRemote(reference: DriveFileReference, remote: DriveRemoteFile, previous: DriveSyncRecord | undefined, accountEmail: string | null): DriveSyncRecord {

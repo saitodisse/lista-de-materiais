@@ -2,6 +2,13 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.6.4 — 2026-09-05
+
+### Changed
+
+- O domínio canônico e os links novos de compartilhamento passam a usar `https://lista-de-materiais.com.br`, domínio próprio adicionado ao projeto da Vercel.
+- A documentação e a Política de Privacidade passam a apontar para o domínio próprio; o alias antigo da Vercel permanece compatível.
+
 ## 0.6.3 — 2026-09-05
 
 ### Fixed

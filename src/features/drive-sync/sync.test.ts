@@ -30,12 +30,12 @@ describe('coordenação do compartilhamento Drive', () => {
     await saveProduct(product('local'))
     const remoteCopy = remote('remoto')
     vi.mocked(downloadDriveJson).mockResolvedValue(remoteCopy)
-    await saveDriveSync({ key: 'active', fileId: 'file-1', link: 'https://listademateriais.vercel.app/configuracoes#drive=file-1', resourceKey: null, fileName: 'dados.json', accountEmail: null, linkedAt: '2026-01-01', lastRemoteModifiedTime: null, lastRemoteCheckedAt: null, lastUploadedAt: null, lastDownloadedAt: null, lastObservedFingerprint: null, lastObservedVersion: null, lastSyncedFingerprint: null })
+    await saveDriveSync({ key: 'active', fileId: 'file-1', link: 'https://lista-de-materiais.com.br/configuracoes#drive=file-1', resourceKey: null, fileName: 'dados.json', accountEmail: null, linkedAt: '2026-01-01', lastRemoteModifiedTime: null, lastRemoteCheckedAt: null, lastUploadedAt: null, lastDownloadedAt: null, lastObservedFingerprint: null, lastObservedVersion: null, lastSyncedFingerprint: null })
 
     await receiveDriveShare()
 
     expect(await db.products.get('cafe')).toMatchObject({ name: 'remoto' })
-    expect(await getDriveSync()).toMatchObject({ fileId: 'file-1', lastDownloadedAt: expect.any(String), lastSyncedFingerprint: fingerprintLocalData(remoteCopy.data) })
+    expect(await getDriveSync()).toMatchObject({ fileId: 'file-1', link: 'https://lista-de-materiais.com.br/configuracoes#drive=file-1', lastDownloadedAt: expect.any(String), lastSyncedFingerprint: fingerprintLocalData(remoteCopy.data) })
   })
 
   it('bloqueia envio quando a cópia remota divergiu da referência anterior', async () => {

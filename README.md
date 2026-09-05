@@ -2,11 +2,11 @@
 
 PWA mobile-first para montar um catálogo de Produtos, suas Receitas e Listas de Materiais (BOM) sem sair do aparelho. Os dados são armazenados no IndexedDB do navegador; a sincronização opcional é manual e usa um arquivo autorizado do Google Drive.
 
-Aplicativo publicado: [listademateriais.vercel.app](https://listademateriais.vercel.app).
+Aplicativo publicado: [lista-de-materiais.com.br](https://lista-de-materiais.com.br).
 
-Página pública para apresentar o aplicativo e configurar o OAuth: [Sobre o aplicativo](https://listademateriais.vercel.app/sobre-o-aplicativo).
+Página pública para apresentar o aplicativo e configurar o OAuth: [Sobre o aplicativo](https://lista-de-materiais.com.br/sobre-o-aplicativo).
 
-Documentos públicos: [Política de Privacidade](https://listademateriais.vercel.app/politica-de-privacidade) · [Termos de Serviço](https://listademateriais.vercel.app/termos-de-servico).
+Documentos públicos: [Política de Privacidade](https://lista-de-materiais.com.br/politica-de-privacidade) · [Termos de Serviço](https://lista-de-materiais.com.br/termos-de-servico).
 
 As rotas profundas usam o fallback SPA configurado em `vercel.json`, para que esses documentos e as demais telas continuem acessíveis diretamente no deployment.
 
@@ -55,7 +55,7 @@ O preview de produção abre em `http://localhost:4173`.
 
 ## Usar o aplicativo
 
-O guia completo fica em [Como usar](https://listademateriais.vercel.app/como-usar) dentro do aplicativo. Ele não cria dados: os exemplos são calculados somente em memória e os cadastros são feitos manualmente nas telas reais.
+O guia completo fica em [Como usar](https://lista-de-materiais.com.br/como-usar) dentro do aplicativo. Ele não cria dados: os exemplos são calculados somente em memória e os cadastros são feitos manualmente nas telas reais.
 
 1. Cadastre matérias-primas, embalagens ou Produtos sem Receita.
 2. Cadastre semiacabados e Produtos finais, selecionando os componentes já existentes e suas quantidades.
@@ -82,7 +82,7 @@ O proprietário configura no próprio Google Drive se o arquivo será compartilh
 
 A integração usa o escopo `drive`, Google Identity Services e Google Picker. O escopo amplo é necessário para que outra pessoa autorizada consiga vincular um arquivo compartilhado apenas pelo ID do Drive. O token fica somente em memória; depois de uma autorização explícita, o aplicativo guarda apenas uma preferência local e tenta renovar a sessão silenciosamente após F5. Para ativar a integração no build, configure `VITE_GOOGLE_CLIENT_ID`, `VITE_GOOGLE_API_KEY` e `VITE_GOOGLE_APP_ID` no ambiente Vite, habilite Drive API/Picker API no Google Cloud e registre as origens autorizadas.
 
-Para o consentimento OAuth, use uma URL pública em um domínio que você controla, com `/sobre-o-aplicativo` como página inicial. Ela identifica o aplicativo, explica Produtos, Receitas, Listas e a finalidade da autorização Google Drive sem exigir login e aponta para a Política de Privacidade e os Termos de Serviço. No Google Cloud, o endereço da Política de Privacidade precisa ser exatamente o mesmo endereço público cadastrado no consentimento. A página estar publicada e responder HTTP 200 não substitui a verificação de propriedade: `listademateriais.vercel.app` é um subdomínio da Vercel e pode ser rejeitado porque o projeto não controla o DNS de `vercel.app`; nesse caso, use um domínio ou subdomínio próprio, verifique-o no Search Console com uma conta que seja Owner/Editor do projeto Google Cloud e cadastre o mesmo domínio no consentimento.
+Para o consentimento OAuth, use `https://lista-de-materiais.com.br/sobre-o-aplicativo` como página inicial e `https://lista-de-materiais.com.br/politica-de-privacidade` como Política de Privacidade. A página identifica o aplicativo, explica Produtos, Receitas, Listas e a finalidade da autorização Google Drive sem exigir login. Verifique `lista-de-materiais.com.br` no Search Console com uma conta que seja Owner/Editor do projeto Google Cloud e cadastre o mesmo domínio no consentimento. O alias `listademateriais.vercel.app` permanece disponível para compatibilidade, mas não é a propriedade usada na verificação OAuth.
 
 Depois de configurar o compartilhamento no Google Drive, clique em **Verificar alterações** e copie o link do aplicativo novamente. Se o Drive exigir uma chave de recurso, o link precisa carregar `resourcekey`; o aplicativo preserva essa chave quando ela é fornecida pelo Drive ou pelo link colado.
 

@@ -8,7 +8,7 @@ export function PrivacyPolicyPage() {
     >
       <LegalSection title="1. Sobre o aplicativo">
         <p>O Lista de Materiais é um PWA local-first para cadastrar Produtos, Receitas e Listas de Materiais. O aplicativo não mantém uma conta própria, um servidor de catálogo ou uma sincronização automática.</p>
-        <p>Esta política descreve o tratamento de dados na versão publicada em <a href="https://listademateriais.vercel.app">listademateriais.vercel.app</a>.</p>
+        <p>Esta política descreve o tratamento de dados na versão publicada em <a href="https://lista-de-materiais.com.br">lista-de-materiais.com.br</a>.</p>
       </LegalSection>
 
       <LegalSection title="2. Dados guardados neste aparelho">
