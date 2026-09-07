@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { PageHeader } from '../components/Page'
 
-export const LEGAL_UPDATE_DATE = '2026-09-05'
+export const LEGAL_UPDATE_DATE = '2026-09-07'
 
 export function LegalPage({
   title,
@@ -16,7 +16,7 @@ export function LegalPage({
   return (
     <div className="page legal-page">
       <PageHeader eyebrow="informações legais" title={title} description={description} />
-      <p className="legal-updated">Última atualização: <time dateTime={LEGAL_UPDATE_DATE}>5 de setembro de 2026</time></p>
+      <p className="legal-updated">Última atualização: <time dateTime={LEGAL_UPDATE_DATE}>7 de setembro de 2026</time></p>
       {children}
       <nav className="legal-navigation" aria-label="Documentos legais">
         <Link to="/politica-de-privacidade">Política de Privacidade</Link>

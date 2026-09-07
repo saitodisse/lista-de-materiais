@@ -5,11 +5,11 @@ declare global {
     google?: {
       accounts?: {
         oauth2?: {
-          initTokenClient: (options: { client_id: string; scope: string; callback: (response: { access_token?: string; expires_in?: number; error?: string; error_description?: string }) => void }) => { requestAccessToken: (options?: { prompt?: string }) => void }
+          initTokenClient: (options: { client_id: string; scope: string; include_granted_scopes?: boolean; callback: (response: { access_token?: string; expires_in?: number; error?: string; error_description?: string }) => void }) => { requestAccessToken: (options?: { prompt?: string }) => void }
         }
       }
       picker?: {
-        Action: { PICKED: string; CANCEL: string }
+        Action: { PICKED: string; CANCEL: string; ERROR: string }
         DocsView: new (viewId?: string) => { setIncludeFolders: (value: boolean) => unknown; setMimeTypes: (value: string) => unknown; setFileIds: (value: string) => unknown }
         ViewId: { DOCS: string }
         PickerBuilder: new () => {
@@ -28,4 +28,3 @@ declare global {
     gapi?: { load: (name: string, callback: () => void) => void }
   }
 }
-

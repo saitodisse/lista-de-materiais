@@ -14,26 +14,35 @@ function installGoogleIdentity() {
   script.dataset.loaded = 'true'
   document.head.appendChild(script)
   window.google = { accounts: { oauth2: { initTokenClient } } }
-  return { requests }
+  return { requests, initTokenClient }
 }
 
 describe('sessão Google Drive', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'test-client.apps.googleusercontent.com')
     localStorage.clear()
     document.getElementById('google-identity-services')?.remove()
     window.google = undefined
   })
 
   afterEach(() => {
+    vi.unstubAllEnvs()
     disconnectGoogleDrive()
     localStorage.clear()
     document.getElementById('google-identity-services')?.remove()
     window.google = undefined
   })
 
-  it('usa o escopo Drive completo para permitir arquivos compartilhados por ID', () => {
-    expect(GOOGLE_DRIVE_SCOPE).toContain('https://www.googleapis.com/auth/drive ')
-    expect(GOOGLE_DRIVE_SCOPE).not.toContain('https://www.googleapis.com/auth/drive.file')
+  it('solicita acesso por arquivo sem incorporar permissões amplas anteriores', async () => {
+    const google = installGoogleIdentity()
+
+    await connectGoogleDrive()
+
+    expect(GOOGLE_DRIVE_SCOPE.split(' ')).toEqual(['https://www.googleapis.com/auth/drive.file', 'openid', 'email'])
+    expect(google.initTokenClient).toHaveBeenCalledWith(expect.objectContaining({
+      scope: GOOGLE_DRIVE_SCOPE,
+      include_granted_scopes: false,
+    }))
   })
 
   it('restaura a sessão após F5 sem persistir o token', async () => {

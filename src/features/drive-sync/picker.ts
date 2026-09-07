@@ -31,7 +31,7 @@ export async function chooseDriveFile(token: string, fileId?: string): Promise<{
   const google = window.google
   const pickerApi = google?.picker
   if (!pickerApi) throw new Error('O Google Picker não está disponível.')
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const view = new pickerApi.DocsView(pickerApi.ViewId.DOCS)
     view.setIncludeFolders(false)
     view.setMimeTypes('application/json')
@@ -42,7 +42,9 @@ export async function chooseDriveFile(token: string, fileId?: string): Promise<{
     builder.setOAuthToken(token)
     builder.addView(view)
     builder.setCallback((response: { action: string; docs?: Array<{ id?: string; name?: string; resourceKey?: string }> }) => {
-        if (response.action !== pickerApi.Action.PICKED) { resolve(null); return }
+        if (response.action === pickerApi.Action.CANCEL) { resolve(null); return }
+        if (response.action === pickerApi.Action.ERROR) { reject(new Error('Não foi possível abrir o seletor do Google Drive. Tente novamente.')); return }
+        if (response.action !== pickerApi.Action.PICKED) return
         const document = response.docs?.[0]
         resolve(document?.id ? { fileId: document.id, resourceKey: document.resourceKey ?? null } : null)
     })

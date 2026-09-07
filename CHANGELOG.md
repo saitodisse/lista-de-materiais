@@ -2,6 +2,15 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.6.5 — 2026-09-07
+
+### Fixed
+
+- A conexão Google solicita acesso somente aos arquivos criados ou selecionados no aplicativo (`drive.file`), sem incorporar permissões amplas concedidas anteriormente.
+- Vincular um arquivo compartilhado por link ou ID passa pela seleção explícita no Google Drive antes de consultar e salvar o vínculo; cancelar preserva a cópia e o vínculo anteriores.
+- Arquivos já vinculados podem ser autorizados novamente sem perder a referência de sincronização; o seletor preserva chaves de recurso e informa falhas para permitir nova tentativa.
+- A Política de Privacidade e as instruções de configuração refletem o acesso por arquivo e orientam a migração das autorizações antigas.
+
 ## 0.6.4 — 2026-09-05
 
 ### Changed

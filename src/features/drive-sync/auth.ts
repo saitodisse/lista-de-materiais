@@ -1,6 +1,6 @@
 const GIS_URL = 'https://accounts.google.com/gsi/client'
 const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
-export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive openid email'
+export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file openid email'
 export const GOOGLE_CONNECTION_PREFERENCE_KEY = 'lista-de-materiais:google-drive-connected'
 
 interface TokenResponse {
@@ -65,6 +65,7 @@ async function requestAccessToken(prompt: '' | 'consent'): Promise<string> {
     const callbackClient = window.google?.accounts?.oauth2?.initTokenClient({
       client_id: clientId(),
       scope: GOOGLE_DRIVE_SCOPE,
+      include_granted_scopes: false,
       callback: (response: TokenResponse) => {
         if (!response.access_token) {
           session = null

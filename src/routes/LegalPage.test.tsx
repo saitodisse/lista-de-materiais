@@ -22,6 +22,7 @@ describe('documentos legais públicos', () => {
     expect(await screen.findByRole('heading', { name: 'Política de Privacidade' })).toBeInTheDocument()
     expect(screen.getByText(/Produtos, Receitas, Listas e suas entradas ficam no IndexedDB/)).toBeInTheDocument()
     expect(screen.getByText(/O token temporário recebido do Google fica somente na memória/)).toBeInTheDocument()
+    expect(screen.getByText(/acesso somente aos arquivos criados pelo aplicativo ou selecionados por você/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'repositório público do projeto' })).toHaveAttribute('href', 'https://github.com/saitodisse/lista-de-materiais')
 
     const navigation = screen.getByRole('navigation', { name: 'Documentos legais' })

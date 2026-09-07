@@ -3,11 +3,10 @@ import { Cloud, Copy, ExternalLink, FilePlus2, FolderOpen, LogOut, RefreshCw, Se
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { DriveSyncRecord } from '../../db/database'
 import { ErrorNotice } from '../../components/Page'
-import { disconnectGoogleDrive, getGoogleAccessToken, getGoogleAccountEmail, hasGoogleConnectionPreference, isGoogleConnected, restoreGoogleDrive } from './auth'
+import { disconnectGoogleDrive, getGoogleAccountEmail, hasGoogleConnectionPreference, isGoogleConnected, restoreGoogleDrive } from './auth'
 import { describeDriveApiError, DriveApiError } from './client'
-import { chooseDriveFile } from './picker'
 import { parseDriveReference } from './links'
-import { attachDriveFile, connectAndGetAccount, createDriveShare, disconnectDriveShare, getDriveAppLink, receiveDriveShare, refreshDriveShare, sendDriveShare, DriveSyncConflictError, LocalChangedDuringSyncError, type SyncDecision } from './sync'
+import { selectAndAttachDriveFile, connectAndGetAccount, createDriveShare, disconnectDriveShare, getDriveAppLink, receiveDriveShare, refreshDriveShare, sendDriveShare, DriveSyncConflictError, LocalChangedDuringSyncError, type DriveFileReference, type SyncDecision } from './sync'
 import { getDriveSync } from '../../db/database'
 
 function formatDate(value: string | null | undefined): string {
@@ -21,7 +20,7 @@ function explainError(reason: unknown): string {
   if (reason instanceof DriveApiError) {
     if (reason.status === 401) return 'A autorização Google expirou. Conecte a conta novamente.'
     if (reason.status === 403) return describeDriveApiError(reason)
-    if (reason.status === 404) return 'O Google Drive não encontrou este arquivo para a conta conectada. Confirme o compartilhamento, autorize novamente o acesso Drive e, se o link usar uma chave de recurso, cole o link completo do Drive com resourcekey.'
+    if (reason.status === 404) return 'O arquivo não está acessível ao aplicativo. Confirme o compartilhamento com a conta conectada e selecione o arquivo no Google Drive para autorizar o acesso. Para um vínculo existente, use Autorizar arquivo.'
     if (reason.status === 412) return 'O arquivo foi alterado por outra pessoa durante o envio. Consulte a cópia mais recente e escolha novamente.'
     if (reason.retryable) return 'O Google Drive está temporariamente indisponível ou limitou as solicitações. Tente novamente mais tarde.'
     return reason.message
@@ -127,16 +126,19 @@ export function DriveSyncPanel() {
   const attach = () => void run('attach', async () => {
     const parsed = parseDriveReference(reference)
     if (!parsed) throw new Error('Cole um link ou ID válido de um arquivo JSON do Google Drive.')
-    const result = await attachDriveFile(parsed)
-    setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
+    await selectFile(parsed)
   })
 
-  const pick = () => void run('pick', async () => {
-    const selected = await chooseDriveFile(getGoogleAccessToken(), parseDriveReference(reference)?.fileId)
-    if (!selected) return
-    setReference(selected.fileId)
-    const result = await attachDriveFile(selected)
+  const selectFile = async (requested?: DriveFileReference) => {
+    const result = await selectAndAttachDriveFile(requested)
+    if (!result) return
+    setReference(result.record.link)
     setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
+  }
+
+  const pick = () => void run('pick', () => selectFile())
+  const authorizeFile = () => void run('authorize', async () => {
+    if (record) await selectFile({ fileId: record.fileId, resourceKey: record.resourceKey })
   })
 
   const refresh = () => void run('refresh', async () => {
@@ -194,6 +196,7 @@ export function DriveSyncPanel() {
       <p className="eyebrow">cópia compartilhada opcional</p>
       <h2>Sincronizar com Google Drive</h2>
       <p>O catálogo continua neste aparelho. O Drive guarda uma cópia JSON que só é lida ou substituída quando você pede.</p>
+      <p>O acesso fica limitado aos arquivos criados aqui ou selecionados por você no Google Drive.</p>
     </div>
     <div className="drive-sync-warning"><strong>Compartilhamento do Drive controla o acesso.</strong> Quem puder editar o arquivo poderá substituir todos os Produtos, Receitas e Listas. O link não é uma senha nem uma forma de criptografia.</div>
     <div className="drive-sync-toolbar">
@@ -206,12 +209,13 @@ export function DriveSyncPanel() {
     </div>
     <div className="drive-sync-link-form">
       <label htmlFor="drive-file-reference">Link ou ID do arquivo compartilhado</label>
-      <div className="drive-sync-input-row"><input id="drive-file-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="https://drive.google.com/file/d/..." /><button type="button" className="button quiet" onClick={pick} disabled={!connected || busy !== null}><FolderOpen size={17} /> Escolher</button><button type="button" className="button primary" onClick={attach} disabled={!connected || busy !== null || !reference.trim()}><Upload size={17} /> Vincular</button></div>
-      <small>Vincular consulta e valida a cópia remota; a importação só acontece depois da confirmação.</small>
+      <div className="drive-sync-input-row"><input id="drive-file-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="https://drive.google.com/file/d/..." /><button type="button" className="button quiet" onClick={pick} disabled={!connected || busy !== null}><FolderOpen size={17} /> Escolher arquivo</button><button type="button" className="button primary" onClick={attach} disabled={!connected || busy !== null || !reference.trim()}><Upload size={17} /> Autorizar e vincular</button></div>
+      <small>Selecione o arquivo na janela do Google para autorizar o acesso, mesmo ao receber um link. Vincular consulta e valida a cópia; receber os dados exige outra confirmação.</small>
     </div>
     {record && <div className="drive-sync-status">
       <div className="drive-sync-status-head"><div><p className="eyebrow">arquivo vinculado</p><strong>{record.fileName ?? record.fileId}</strong><code>{record.fileId}</code><span className="drive-permission-note">{record.canModifyContent === false ? 'somente leitura neste arquivo' : 'permissão de envio disponível'}</span></div><span className="drive-sync-status-actions"><button type="button" className="icon-button" aria-label="Copiar link do aplicativo" title={copied ? 'Link copiado' : 'Copiar link'} onClick={copyLink} disabled={busy !== null}><Copy size={16} /></button><a className="icon-button" aria-label="Abrir arquivo no Google Drive" title="Abrir no Google Drive" href={driveWebLink(record)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} /></a></span></div>
       <dl className="drive-sync-dates"><div><dt>Última cópia remota consultada</dt><dd>{formatDate(record.lastRemoteModifiedTime)}</dd></div><div><dt>Último envio</dt><dd>{formatDate(record.lastUploadedAt)}</dd></div><div><dt>Último recebimento</dt><dd>{formatDate(record.lastDownloadedAt)}</dd></div></dl>
+      <button type="button" className="button quiet" onClick={authorizeFile} disabled={!connected || busy !== null}><FolderOpen size={16} /> Autorizar arquivo</button>
       <div className="data-actions"><button type="button" className="button quiet" onClick={refresh} disabled={!connected || busy !== null}><RefreshCw size={16} /> {busy === 'refresh' ? 'Consultando…' : 'Verificar alterações'}</button><button type="button" className="button quiet" onClick={send} disabled={!connected || busy !== null || record.canModifyContent === false}><Send size={16} /> Enviar dados</button><button type="button" className="button quiet" onClick={receive} disabled={!connected || busy !== null}><Upload size={16} /> Receber dados</button><button type="button" className="button quiet" onClick={disconnect} disabled={busy !== null}><LogOut size={16} /> Desvincular</button></div>
     </div>}
     {success && <p className="drive-sync-success" role="status">{success}</p>}

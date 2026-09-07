@@ -3,6 +3,7 @@ import type { LocalDataExport } from '../../domain/catalog'
 import { connectGoogleDrive, getGoogleAccountEmail, getGoogleAccessToken } from './auth'
 import { createDriveJsonFile, downloadDriveJson, type DriveFileMetadata, type DriveRemoteFile, updateDriveJsonFile } from './client'
 import { fingerprintLocalData } from './content'
+import { chooseDriveFile } from './picker'
 
 export type SyncDecision = 'receive' | 'overwrite' | 'cancel'
 
@@ -134,6 +135,13 @@ export async function attachDriveFile(reference: DriveFileReference): Promise<{ 
   const record = recordFromRemote(reference, remote, previous?.fileId === reference.fileId ? previous : undefined, accountEmail)
   await saveDriveSync(record)
   return { record, remote }
+}
+
+export async function selectAndAttachDriveFile(reference?: DriveFileReference): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile } | null> {
+  const selected = await chooseDriveFile(getGoogleAccessToken(), reference?.fileId)
+  if (!selected) return null
+  if (reference && selected.fileId !== reference.fileId) throw new Error('Selecione o mesmo arquivo do link informado ou use Escolher arquivo para vincular outro.')
+  return attachDriveFile({ fileId: selected.fileId, resourceKey: selected.resourceKey ?? reference?.resourceKey })
 }
 
 export async function refreshDriveShare(): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile }> {
