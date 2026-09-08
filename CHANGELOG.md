@@ -2,6 +2,14 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.7.1 — 2026-09-08
+
+### Documentation
+
+- Guia para compartilhar o catálogo por link como Leitor ou Editor, incluindo leitura geral com editores específicos e a distinção entre permissões remotas e edição local.
+- Diagnóstico do erro de acesso a um arquivo privado, orientações para preservar a chave de recurso e revisar a conta e a autorização Google.
+- Roteiro de teste com duas contas para validar recebimento confirmado, bloqueio de envio para leitores e conflitos de sincronização manual.
+
 ## 0.7.0 — 2026-09-08
 
 ### Fixed

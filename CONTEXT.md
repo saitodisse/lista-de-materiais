@@ -38,4 +38,8 @@
 
 **Vínculo do Drive** identifica um arquivo, a chave de recurso opcional, datas apresentadas e a referência normalizada da última sincronização neste aparelho. O vínculo fica separado dos metadados locais e sobrevive à importação JSON, à demonstração e à limpeza.
 
+**Permissão do arquivo** é o acesso definido no Google Drive. Leitores podem receber o catálogo quando o download é permitido; editores também podem enviar a cópia local. Editar Produtos neste aparelho não altera o arquivo remoto até um envio explícito.
+
+**Link do aplicativo** abre Configurações com a referência do arquivo para vincular. Ele não concede acesso, não seleciona um papel de Leitor ou Editor e não importa dados automaticamente. Links diferentes para o mesmo arquivo continuam sujeitos às mesmas permissões do Drive.
+
 **Conflito de sincronização** ocorre quando o arquivo remoto mudou desde a última referência conhecida, ou quando ainda não existe referência local. O usuário deve escolher receber, substituir o remoto ou cancelar.
