@@ -73,11 +73,11 @@ export function AppHomepagePage() {
         <div>
           <p className="eyebrow">autorização opcional</p>
           <h2 id="public-homepage-drive-title">Como o Google Drive entra na experiência</h2>
-          <p>Quando você escolhe conectar o Google, o aplicativo usa o Google Identity Services e a API do Drive para criar, consultar ou atualizar o arquivo JSON que você selecionar. A permissão é a do próprio arquivo e continua sob o controle do Google Drive.</p>
+          <p>Quando você escolhe conectar o Google, o aplicativo usa o Google Identity Services e a API do Drive para criar, localizar, consultar ou atualizar uma cópia JSON. O acesso amplo é usado somente nas ações manuais que você inicia; o compartilhamento e as permissões de cada arquivo continuam sob o controle do Google Drive.</p>
         </div>
         <ol className="public-homepage-drive-steps">
           <li><strong>Você autoriza a conta</strong><span>A conexão é iniciada por um botão em Configurações.</span></li>
-          <li><strong>Você escolhe o arquivo ou cria uma cópia</strong><span>O conteúdo completo só é enviado ou recebido quando você confirma a ação.</span></li>
+          <li><strong>Você informa o arquivo ou cria uma cópia</strong><span>O conteúdo completo só é enviado ou recebido quando você confirma a ação.</span></li>
           <li><strong>O aplicativo não sincroniza sozinho</strong><span>Não há servidor próprio, sincronização automática ou acesso ao Drive sem uma ação sua.</span></li>
         </ol>
         <p className="public-homepage-drive-footnote"><Cloud size={17} aria-hidden="true" /> O token temporário fica somente na memória da sessão; o aplicativo não grava credenciais, segredos ou tokens no link, no JSON ou em um servidor próprio.</p>

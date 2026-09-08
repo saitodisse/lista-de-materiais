@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { Cloud, Copy, ExternalLink, FilePlus2, FolderOpen, LogOut, RefreshCw, Send, Upload, X } from 'lucide-react'
+import { Cloud, Copy, ExternalLink, FilePlus2, FolderOpen, LogOut, RefreshCw, Search, Send, Upload, X } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { DriveSyncRecord } from '../../db/database'
 import { ErrorNotice } from '../../components/Page'
 import { disconnectGoogleDrive, getGoogleAccountEmail, hasGoogleConnectionPreference, isGoogleConnected, restoreGoogleDrive } from './auth'
 import { describeDriveApiError, DriveApiError } from './client'
 import { parseDriveReference } from './links'
-import { selectAndAttachDriveFile, connectAndGetAccount, createDriveShare, disconnectDriveShare, getDriveAppLink, receiveDriveShare, refreshDriveShare, sendDriveShare, DriveSyncConflictError, LocalChangedDuringSyncError, type DriveFileReference, type SyncDecision } from './sync'
+import { attachDriveMetadata, attachDriveFile, connectAndGetAccount, createDriveShare, disconnectDriveShare, findMyDriveFiles, getDriveAppLink, receiveDriveShare, refreshDriveShare, sendDriveShare, DriveSyncConflictError, LocalChangedDuringSyncError, type SyncDecision } from './sync'
+import type { DriveFileMetadata } from './client'
 import { getDriveSync } from '../../db/database'
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return 'ainda não consultado'
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'data desconhecida' : new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(date)
 }
 
 function explainError(reason: unknown): string {
@@ -20,7 +22,7 @@ function explainError(reason: unknown): string {
   if (reason instanceof DriveApiError) {
     if (reason.status === 401) return 'A autorização Google expirou. Conecte a conta novamente.'
     if (reason.status === 403) return describeDriveApiError(reason)
-    if (reason.status === 404) return 'O arquivo não está acessível ao aplicativo. Confirme o compartilhamento com a conta conectada e selecione o arquivo no Google Drive para autorizar o acesso. Para um vínculo existente, use Autorizar arquivo.'
+    if (reason.status === 404) return 'O arquivo não está acessível à conta conectada. Confirme o compartilhamento no Google Drive e cole novamente o link completo, incluindo resourcekey quando existir.'
     if (reason.status === 412) return 'O arquivo foi alterado por outra pessoa durante o envio. Consulte a cópia mais recente e escolha novamente.'
     if (reason.retryable) return 'O Google Drive está temporariamente indisponível ou limitou as solicitações. Tente novamente mais tarde.'
     return reason.message
@@ -29,14 +31,14 @@ function explainError(reason: unknown): string {
 }
 
 function driveWebLink(record: DriveSyncRecord): string {
-  return `https://drive.google.com/open?id=${encodeURIComponent(record.fileId)}`
+  const params = new URLSearchParams({ id: record.fileId })
+  if (record.resourceKey) params.set('resourcekey', record.resourceKey)
+  return `https://drive.google.com/open?${params.toString()}`
 }
 
 function initialDriveReference(): string {
   if (typeof window === 'undefined') return ''
-  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-  const fileId = params.get('drive')
-  return fileId ? `https://drive.google.com/open?id=${encodeURIComponent(fileId)}${params.get('resourceKey') ? `&resourceKey=${encodeURIComponent(params.get('resourceKey')!)}` : ''}` : ''
+  return parseDriveReference(window.location.href) ? window.location.href : ''
 }
 
 function ConfirmationDialog({ title, description, actionLabel, onConfirm, onClose, busy }: { title: string; description: string; actionLabel: string; onConfirm: () => void; onClose: () => void; busy: boolean }) {
@@ -62,6 +64,26 @@ function ConfirmationDialog({ title, description, actionLabel, onConfirm, onClos
   </div>
 }
 
+function DriveFileChoices({ files, onSelect, onClose, busy }: { files: DriveFileMetadata[]; onSelect: (file: DriveFileMetadata) => void; onClose: () => void; busy: boolean }) {
+  return <div className="confirmation-backdrop">
+    <section className="confirmation-dialog drive-file-choices" role="dialog" aria-modal="true" aria-labelledby="drive-file-choices-title" aria-describedby="drive-file-choices-description">
+      <button type="button" className="confirmation-close" aria-label="Fechar escolha de arquivo" onClick={onClose} disabled={busy}><X size={18} /></button>
+      <div className="confirmation-icon"><Search size={24} /></div>
+      <p className="eyebrow">arquivos encontrados</p>
+      <h2 id="drive-file-choices-title">Escolha seu arquivo</h2>
+      <p id="drive-file-choices-description">Há mais de um arquivo padrão no seu Drive. Escolha a cópia que deseja vincular; os dados locais não serão substituídos.</p>
+      <div className="drive-file-choice-list">
+        {files.map((file) => <button type="button" className="drive-file-choice" key={file.id} onClick={() => onSelect(file)} disabled={busy}>
+          <strong>{file.name}</strong>
+          <span>Alterado em {formatDate(file.modifiedTime)}</span>
+          <code>{file.id}</code>
+        </button>)}
+      </div>
+      <div className="confirmation-actions"><button type="button" className="button secondary" onClick={onClose} disabled={busy}>Cancelar</button></div>
+    </section>
+  </div>
+}
+
 export function DriveSyncPanel() {
   const record = useLiveQuery(() => getDriveSync(), [])
   const [connected, setConnected] = useState(isGoogleConnected())
@@ -73,6 +95,7 @@ export function DriveSyncPanel() {
   const [success, setSuccess] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<'receive' | 'create' | 'conflict-receive' | null>(null)
   const [conflict, setConflict] = useState<DriveSyncConflictError | null>(null)
+  const [foundFiles, setFoundFiles] = useState<DriveFileMetadata[] | null>(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -118,7 +141,7 @@ export function DriveSyncPanel() {
 
   const create = () => void run('create', async () => {
     const result = await createDriveShare()
-    setReference(result.record.fileId)
+    setReference(result.record.link)
     setSuccess('Arquivo criado e enviado ao Google Drive. Configure o compartilhamento no Drive antes de enviar o link.')
     setConfirm(null)
   })
@@ -126,20 +149,34 @@ export function DriveSyncPanel() {
   const attach = () => void run('attach', async () => {
     const parsed = parseDriveReference(reference)
     if (!parsed) throw new Error('Cole um link ou ID válido de um arquivo JSON do Google Drive.')
-    await selectFile(parsed)
-  })
-
-  const selectFile = async (requested?: DriveFileReference) => {
-    const result = await selectAndAttachDriveFile(requested)
-    if (!result) return
+    const result = await attachDriveFile(parsed)
     setReference(result.record.link)
     setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
-  }
-
-  const pick = () => void run('pick', () => selectFile())
-  const authorizeFile = () => void run('authorize', async () => {
-    if (record) await selectFile({ fileId: record.fileId, resourceKey: record.resourceKey })
   })
+
+  const findMyFile = () => void run('find', async () => {
+    const files = await findMyDriveFiles()
+    if (files.length === 0) {
+      setSuccess('Nenhum arquivo “lista-de-materiais.json” foi encontrado entre os arquivos desta conta. Nenhum arquivo novo foi criado.')
+      return
+    }
+    if (files.length > 1) {
+      setFoundFiles(files)
+      return
+    }
+    const result = await attachDriveMetadata(files[0]!)
+    setReference(result.record.link)
+    setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
+  })
+
+  const selectFoundFile = (file: DriveFileMetadata) => {
+    setFoundFiles(null)
+    void run('find-select', async () => {
+      const result = await attachDriveMetadata(file)
+      setReference(result.record.link)
+      setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
+    })
+  }
 
   const refresh = () => void run('refresh', async () => {
     const result = await refreshDriveShare()
@@ -172,8 +209,7 @@ export function DriveSyncPanel() {
 
   const copyLink = () => void run('copy', async () => {
     if (!record) return
-    const current = connected ? (await refreshDriveShare()).record : record
-    await navigator.clipboard?.writeText(getDriveAppLink(current))
+    await navigator.clipboard?.writeText(getDriveAppLink(record))
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1800)
   })
@@ -196,7 +232,7 @@ export function DriveSyncPanel() {
       <p className="eyebrow">cópia compartilhada opcional</p>
       <h2>Sincronizar com Google Drive</h2>
       <p>O catálogo continua neste aparelho. O Drive guarda uma cópia JSON que só é lida ou substituída quando você pede.</p>
-      <p>O acesso fica limitado aos arquivos criados aqui ou selecionados por você no Google Drive.</p>
+      <p>O acesso ao Drive permite abrir arquivos compartilhados e localizar seus arquivos padrão, sempre por uma ação manual sua.</p>
     </div>
     <div className="drive-sync-warning"><strong>Compartilhamento do Drive controla o acesso.</strong> Quem puder editar o arquivo poderá substituir todos os Produtos, Receitas e Listas. O link não é uma senha nem uma forma de criptografia.</div>
     <div className="drive-sync-toolbar">
@@ -209,13 +245,12 @@ export function DriveSyncPanel() {
     </div>
     <div className="drive-sync-link-form">
       <label htmlFor="drive-file-reference">Link ou ID do arquivo compartilhado</label>
-      <div className="drive-sync-input-row"><input id="drive-file-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="https://drive.google.com/file/d/..." /><button type="button" className="button quiet" onClick={pick} disabled={!connected || busy !== null}><FolderOpen size={17} /> Escolher arquivo</button><button type="button" className="button primary" onClick={attach} disabled={!connected || busy !== null || !reference.trim()}><Upload size={17} /> Autorizar e vincular</button></div>
-      <small>Selecione o arquivo na janela do Google para autorizar o acesso, mesmo ao receber um link. Vincular consulta e valida a cópia; receber os dados exige outra confirmação.</small>
+      <div className="drive-sync-input-row"><input id="drive-file-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="ID ou https://drive.google.com/file/d/..." /><button type="button" className="button quiet" onClick={findMyFile} disabled={!connected || busy !== null}><Search size={17} /> Encontrar meu arquivo</button><button type="button" className="button primary" onClick={attach} disabled={!connected || busy !== null || !reference.trim()}><FolderOpen size={17} /> Vincular arquivo</button></div>
+      <small>Você pode colar um ID, um link do Drive ou o link completo deste aplicativo. Vincular consulta e valida a cópia; receber os dados exige outra confirmação.</small>
     </div>
     {record && <div className="drive-sync-status">
       <div className="drive-sync-status-head"><div><p className="eyebrow">arquivo vinculado</p><strong>{record.fileName ?? record.fileId}</strong><code>{record.fileId}</code><span className="drive-permission-note">{record.canModifyContent === false ? 'somente leitura neste arquivo' : 'permissão de envio disponível'}</span></div><span className="drive-sync-status-actions"><button type="button" className="icon-button" aria-label="Copiar link do aplicativo" title={copied ? 'Link copiado' : 'Copiar link'} onClick={copyLink} disabled={busy !== null}><Copy size={16} /></button><a className="icon-button" aria-label="Abrir arquivo no Google Drive" title="Abrir no Google Drive" href={driveWebLink(record)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} /></a></span></div>
       <dl className="drive-sync-dates"><div><dt>Última cópia remota consultada</dt><dd>{formatDate(record.lastRemoteModifiedTime)}</dd></div><div><dt>Último envio</dt><dd>{formatDate(record.lastUploadedAt)}</dd></div><div><dt>Último recebimento</dt><dd>{formatDate(record.lastDownloadedAt)}</dd></div></dl>
-      <button type="button" className="button quiet" onClick={authorizeFile} disabled={!connected || busy !== null}><FolderOpen size={16} /> Autorizar arquivo</button>
       <div className="data-actions"><button type="button" className="button quiet" onClick={refresh} disabled={!connected || busy !== null}><RefreshCw size={16} /> {busy === 'refresh' ? 'Consultando…' : 'Verificar alterações'}</button><button type="button" className="button quiet" onClick={send} disabled={!connected || busy !== null || record.canModifyContent === false}><Send size={16} /> Enviar dados</button><button type="button" className="button quiet" onClick={receive} disabled={!connected || busy !== null}><Upload size={16} /> Receber dados</button><button type="button" className="button quiet" onClick={disconnect} disabled={busy !== null}><LogOut size={16} /> Desvincular</button></div>
     </div>}
     {success && <p className="drive-sync-success" role="status">{success}</p>}
@@ -223,6 +258,7 @@ export function DriveSyncPanel() {
     {confirm === 'create' && <ConfirmationDialog title="Criar uma cópia no Drive?" description="Os dados atuais deste aparelho serão enviados para um novo arquivo JSON. O arquivo ficará sujeito às permissões que você configurar no Google Drive." actionLabel="Criar e enviar" onConfirm={create} onClose={() => setConfirm(null)} busy={busy !== null} />}
     {confirm === 'receive' && <ConfirmationDialog title="Substituir os dados deste aparelho?" description="Produtos, Receitas, Listas e entradas locais serão substituídos pelo conteúdo validado do arquivo do Drive. Faça uma cópia JSON local se precisar recuperar o estado atual." actionLabel="Receber dados" onConfirm={confirmReceive} onClose={() => setConfirm(null)} busy={busy !== null} />}
     {confirm === 'conflict-receive' && <ConfirmationDialog title="Receber a cópia remota?" description="A cópia do Drive divergiu da referência anterior. Produtos, Receitas, Listas e entradas locais serão substituídos pelo conteúdo remoto validado." actionLabel="Receber do Drive" onConfirm={confirmConflictReceive} onClose={() => setConfirm(null)} busy={busy !== null} />}
+    {foundFiles && <DriveFileChoices files={foundFiles} onSelect={selectFoundFile} onClose={() => setFoundFiles(null)} busy={busy !== null} />}
     {conflict && <div className="confirmation-backdrop"><section className="confirmation-dialog" role="dialog" aria-modal="true" aria-labelledby="drive-conflict-title"><button type="button" className="confirmation-close" aria-label="Fechar conflito" onClick={() => setConflict(null)} disabled={busy !== null}><X size={18} /></button><div className="confirmation-icon"><RefreshCw size={24} /></div><p className="eyebrow">cópias diferentes</p><h2 id="drive-conflict-title">Escolha qual cópia prevalece</h2><p>O arquivo remoto mudou desde a última referência conhecida ou ainda não há uma referência neste aparelho.</p><div className="confirmation-actions"><button type="button" className="button secondary" onClick={() => setConflict(null)} disabled={busy !== null}>Cancelar</button><button type="button" className="button secondary" onClick={() => { setConflict(null); setConfirm('conflict-receive') }} disabled={busy !== null}>Receber do Drive</button><button type="button" className="button danger" onClick={() => resolveConflict('overwrite')} disabled={busy !== null}>Substituir o Drive</button></div></section></div>}
   </section>
 }

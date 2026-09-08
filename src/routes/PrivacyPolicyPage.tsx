@@ -17,8 +17,9 @@ export function PrivacyPolicyPage() {
       </LegalSection>
 
       <LegalSection title="3. Google Drive opcional">
-        <p>Você pode autorizar a integração com o Google para criar, consultar ou atualizar um arquivo JSON escolhido no seu Google Drive. O acesso acontece somente quando você inicia uma ação na interface e segue as permissões definidas no Google Drive.</p>
-        <p>A integração solicita acesso somente aos arquivos criados pelo aplicativo ou selecionados por você na janela do Google Drive. Ao receber um link compartilhado, você também precisa selecionar o arquivo para autorizar o acesso do aplicativo. A permissão solicitada não inclui o gerenciamento de todos os arquivos do seu Drive.</p>
+        <p>Você pode autorizar a integração com o Google para criar, localizar, consultar ou atualizar um arquivo JSON no seu Google Drive. O acesso acontece somente quando você inicia uma ação na interface e segue as permissões definidas no Google Drive.</p>
+        <p>A integração solicita o escopo amplo de acesso ao Google Drive porque precisa abrir arquivos compartilhados por link ou ID e localizar seus arquivos próprios com o nome padrão. O aplicativo usa esse acesso apenas para as ações manuais da sincronização; o compartilhamento e as permissões de cada arquivo continuam sob o controle do Google Drive.</p>
+        <p>O Google classifica o escopo <code>drive</code> como restrito. A publicação do aplicativo não representa aprovação ou conclusão da verificação do Google; a configuração do consentimento e desta política deve acompanhar o processo de verificação aplicável.</p>
         <p>O aplicativo consulta o endereço de e-mail da conta Google conectada para identificá-la em Configurações. Não solicita seus dados de perfil.</p>
         <p>O token temporário recebido do Google fica somente na memória da sessão do navegador. O aplicativo não grava o token, a chave secreta do cliente ou credenciais em IndexedDB, URL, exportação, logs ou servidor próprio.</p>
         <p>Quando você envia ou recebe dados, o conteúdo completo da cópia local pode ser transmitido ao arquivo do Drive selecionado. O Google trata a autenticação, a autorização e a retenção desse arquivo segundo as próprias políticas e configurações da sua conta.</p>

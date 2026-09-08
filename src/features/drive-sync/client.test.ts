@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { LocalDataExport } from '../../domain/catalog'
-import { describeDriveApiError, DriveApiError, downloadDriveJson, updateDriveJsonFile } from './client'
+import { describeDriveApiError, DriveApiError, downloadDriveJson, listDriveJsonFiles, updateDriveJsonFile } from './client'
 
 const validData: LocalDataExport = { format: 'lista-de-materiais', version: 1, exportedAt: '2026-01-01T00:00:00.000Z', products: [], materialLists: [], materialListEntries: [] }
 
@@ -34,5 +34,19 @@ describe('cliente Google Drive', () => {
 
   it('explica quando o projeto ainda não habilitou a Drive API', () => {
     expect(describeDriveApiError(new DriveApiError('Drive API has not been used', 403, 'accessNotConfigured'))).toMatch(/não está habilitada/i)
+  })
+
+  it('busca somente arquivos próprios não excluídos e percorre todas as páginas', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ nextPageToken: 'next-page', files: [{ id: 'file-1', name: 'lista-de-materiais.json', modifiedTime: '2026-01-02T00:00:00.000Z' }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ files: [{ id: 'file-2', name: 'lista-de-materiais.json', modifiedTime: '2026-01-01T00:00:00.000Z' }] }), { status: 200 }))
+
+    const files = await listDriveJsonFiles('token')
+
+    expect(files.map((file) => file.id)).toEqual(['file-1', 'file-2'])
+    const firstUrl = String(fetchMock.mock.calls[0]?.[0])
+    expect(firstUrl).toContain("name+%3D+%27lista-de-materiais.json%27+and+trashed+%3D+false+and+%27me%27+in+owners")
+    expect(firstUrl).toContain('pageSize=1000')
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('pageToken=next-page')
   })
 })

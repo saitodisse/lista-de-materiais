@@ -31,6 +31,12 @@
 .drive-permission-note { display:block; margin-top:5px; color:#60746e; font-size:11px; }
 .drive-sync-status-actions { display:flex; gap:7px; }
 .drive-sync-status-actions .icon-button { text-decoration:none; }
+.drive-file-choice-list { display:grid; gap:8px; margin-top:20px; max-height:min(48vh,420px); overflow:auto; }
+.drive-file-choice { display:grid; gap:4px; padding:13px 14px; border:1px solid var(--line); background:var(--field); color:var(--ink); text-align:left; }
+.drive-file-choice:hover:not(:disabled),.drive-file-choice:focus-visible { border-color:var(--ink); background:#f8fbf7; }
+.drive-file-choice strong { font-size:14px; }
+.drive-file-choice span { color:var(--ink-soft); font-size:12px; }
+.drive-file-choice code { color:#6a7d76; font-size:10px; overflow-wrap:anywhere; }
 .drive-sync-dates { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0; }
 .drive-sync-dates div { padding-top:9px; border-top:1px solid var(--line); }
 .drive-sync-dates dt { margin-bottom:4px; color:#71847e; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }

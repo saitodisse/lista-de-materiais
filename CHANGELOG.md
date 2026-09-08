@@ -2,14 +2,14 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
-## 0.6.5 — 2026-09-07
+## 0.7.0 — 2026-09-08
 
 ### Fixed
 
-- A conexão Google solicita acesso somente aos arquivos criados ou selecionados no aplicativo (`drive.file`), sem incorporar permissões amplas concedidas anteriormente.
-- Vincular um arquivo compartilhado por link ou ID passa pela seleção explícita no Google Drive antes de consultar e salvar o vínculo; cancelar preserva a cópia e o vínculo anteriores.
-- Arquivos já vinculados podem ser autorizados novamente sem perder a referência de sincronização; o seletor preserva chaves de recurso e informa falhas para permitir nova tentativa.
-- A Política de Privacidade e as instruções de configuração refletem o acesso por arquivo e orientam a migração das autorizações antigas.
+- A conexão Google solicita os escopos `drive`, `openid` e `email`, sem incorporar permissões concedidas por autorizações anteriores; sessões sem o escopo necessário pedem nova autorização.
+- Links do Drive, IDs simples e links completos do aplicativo consultam diretamente o arquivo JSON, preservando `resourcekey` e sem depender do Google Picker.
+- A busca **Encontrar meu arquivo** percorre as páginas de arquivos próprios não excluídos, vincula o único resultado validado e apresenta nome/data quando há várias cópias.
+- A Política de Privacidade e as instruções de configuração refletem o acesso amplo usado para abrir compartilhamentos e localizar arquivos padrão.
 
 ## 0.6.4 — 2026-09-05
 

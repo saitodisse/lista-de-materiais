@@ -1,9 +1,8 @@
 import { clearDriveSync, exportLocalData, getDriveSync, importLocalData, saveDriveSync, type DriveSyncRecord } from '../../db/database'
 import type { LocalDataExport } from '../../domain/catalog'
 import { connectGoogleDrive, getGoogleAccountEmail, getGoogleAccessToken } from './auth'
-import { createDriveJsonFile, downloadDriveJson, type DriveFileMetadata, type DriveRemoteFile, updateDriveJsonFile } from './client'
+import { createDriveJsonFile, downloadDriveJson, listDriveJsonFiles, type DriveFileMetadata, type DriveRemoteFile, updateDriveJsonFile } from './client'
 import { fingerprintLocalData } from './content'
-import { chooseDriveFile } from './picker'
 
 export type SyncDecision = 'receive' | 'overwrite' | 'cancel'
 
@@ -137,11 +136,25 @@ export async function attachDriveFile(reference: DriveFileReference): Promise<{ 
   return { record, remote }
 }
 
-export async function selectAndAttachDriveFile(reference?: DriveFileReference): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile } | null> {
-  const selected = await chooseDriveFile(getGoogleAccessToken(), reference?.fileId)
-  if (!selected) return null
-  if (reference && selected.fileId !== reference.fileId) throw new Error('Selecione o mesmo arquivo do link informado ou use Escolher arquivo para vincular outro.')
-  return attachDriveFile({ fileId: selected.fileId, resourceKey: selected.resourceKey ?? reference?.resourceKey })
+export async function findMyDriveFiles(): Promise<DriveFileMetadata[]> {
+  const { token } = await tokenAndAccount()
+  return listDriveJsonFiles(token)
+}
+
+export const findDriveFiles = findMyDriveFiles
+
+export async function attachDriveMetadata(metadata: DriveFileMetadata): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile }> {
+  return attachDriveFile({ fileId: metadata.id, resourceKey: metadata.resourceKey })
+}
+
+/**
+ * Lists the owner's standard files. A caller decides whether to attach the
+ * only result immediately or present several candidates for confirmation.
+ */
+export async function findAndAttachMyDriveFile(): Promise<{ matches: DriveFileMetadata[]; result?: { record: DriveSyncRecord; remote: DriveRemoteFile } }> {
+  const matches = await findMyDriveFiles()
+  if (matches.length !== 1) return { matches }
+  return { matches, result: await attachDriveMetadata(matches[0]!) }
 }
 
 export async function refreshDriveShare(): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile }> {
@@ -213,5 +226,5 @@ export async function disconnectDriveShare(): Promise<void> {
 }
 
 export function getDriveAppLink(record: DriveSyncRecord): string {
-  return record.link
+  return appLink(record.fileId, record.resourceKey)
 }

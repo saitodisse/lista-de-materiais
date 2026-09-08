@@ -1,11 +1,13 @@
 const GIS_URL = 'https://accounts.google.com/gsi/client'
 const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
-export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file openid email'
+export const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive openid email'
+export const GOOGLE_DRIVE_REQUIRED_SCOPE = 'https://www.googleapis.com/auth/drive'
 export const GOOGLE_CONNECTION_PREFERENCE_KEY = 'lista-de-materiais:google-drive-connected'
 
 interface TokenResponse {
   access_token?: string
   expires_in?: number
+  scope?: string
   error?: string
   error_description?: string
 }
@@ -14,7 +16,20 @@ interface TokenClient {
   requestAccessToken: (options?: { prompt?: string }) => void
 }
 
-let session: { token: string; expiresAt: number } | null = null
+interface GoogleSession {
+  token: string
+  expiresAt: number
+  grantedScopes: Set<string> | null
+}
+
+export class GoogleDriveScopeError extends Error {
+  constructor() {
+    super('A autorização Google não concedeu acesso amplo ao Google Drive. Autorize novamente para recuperar arquivos compartilhados.')
+    this.name = 'GoogleDriveScopeError'
+  }
+}
+
+let session: GoogleSession | null = null
 
 function clientId(): string {
   const value = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
@@ -57,6 +72,15 @@ function forgetGoogleConnection(): void {
 
 export { hasGoogleConnectionPreference }
 
+function parseGrantedScopes(scope: string | undefined): Set<string> | null {
+  if (!scope) return null
+  return new Set(scope.split(/\s+/).filter(Boolean))
+}
+
+function hasRequiredScope(scopes: Set<string> | null): boolean {
+  return scopes === null || scopes.has(GOOGLE_DRIVE_REQUIRED_SCOPE)
+}
+
 async function requestAccessToken(prompt: '' | 'consent'): Promise<string> {
   await loadScript(GIS_URL, 'google-identity-services')
   const oauth2 = window.google?.accounts?.oauth2
@@ -72,7 +96,13 @@ async function requestAccessToken(prompt: '' | 'consent'): Promise<string> {
           reject(new Error(response.error_description ?? 'A autorização Google foi cancelada.'))
           return
         }
-        session = { token: response.access_token, expiresAt: Date.now() + ((response.expires_in ?? 3600) - 30) * 1000 }
+        const grantedScopes = parseGrantedScopes(response.scope)
+        if (!hasRequiredScope(grantedScopes)) {
+          session = null
+          reject(new GoogleDriveScopeError())
+          return
+        }
+        session = { token: response.access_token, expiresAt: Date.now() + ((response.expires_in ?? 3600) - 30) * 1000, grantedScopes }
         resolve(response.access_token)
       },
     }) as TokenClient
@@ -88,18 +118,29 @@ export async function connectGoogleDrive(): Promise<string> {
 
 export async function restoreGoogleDrive(): Promise<string> {
   if (!hasGoogleConnectionPreference()) throw new Error('Nenhuma sessão Google foi marcada para restauração.')
-  const token = await requestAccessToken('')
+  let token: string
+  try {
+    token = await requestAccessToken('')
+  } catch (reason) {
+    if (!(reason instanceof GoogleDriveScopeError)) throw reason
+    token = await requestAccessToken('consent')
+  }
   rememberGoogleConnection()
   return token
 }
 
 export function getGoogleAccessToken(): string {
   if (!session || session.expiresAt <= Date.now()) throw new Error('A sessão Google expirou. Conecte a conta novamente.')
+  if (!hasRequiredScope(session.grantedScopes)) throw new GoogleDriveScopeError()
   return session.token
 }
 
 export function isGoogleConnected(): boolean {
-  return Boolean(session && session.expiresAt > Date.now())
+  return Boolean(session && session.expiresAt > Date.now() && hasRequiredScope(session.grantedScopes))
+}
+
+export function hasGoogleDriveScope(): boolean {
+  return Boolean(session && session.expiresAt > Date.now() && hasRequiredScope(session.grantedScopes))
 }
 
 export function disconnectGoogleDrive(): void {

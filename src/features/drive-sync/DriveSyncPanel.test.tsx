@@ -1,10 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { db, getDriveSync, resetDatabaseForTest, saveDriveSync } from '../../db/database'
+import { db, getDriveSync, resetDatabaseForTest, saveDriveSync, saveProduct } from '../../db/database'
+import type { ProductRecord } from '../../domain/catalog'
 import { DriveSyncPanel } from './DriveSyncPanel'
-import { chooseDriveFile } from './picker'
-import { downloadDriveJson } from './client'
+import { downloadDriveJson, listDriveJsonFiles } from './client'
 
 vi.mock('./auth', () => ({
   isGoogleConnected: () => true,
@@ -15,11 +15,23 @@ vi.mock('./auth', () => ({
   disconnectGoogleDrive: vi.fn(),
   restoreGoogleDrive: vi.fn(),
 }))
-vi.mock('./picker', () => ({ chooseDriveFile: vi.fn() }))
 vi.mock('./client', async (importOriginal) => ({
   ...await importOriginal<typeof import('./client')>(),
   downloadDriveJson: vi.fn(),
+  listDriveJsonFiles: vi.fn(),
 }))
+
+const remoteData = { format: 'lista-de-materiais' as const, version: 1 as const, exportedAt: '2026-09-07', products: [], materialLists: [], materialListEntries: [] }
+const metadata = (id: string, modifiedTime = '2026-09-07T12:00:00.000Z') => ({
+  id,
+  name: 'lista-de-materiais.json',
+  mimeType: 'application/json',
+  modifiedTime,
+  webViewLink: null,
+  resourceKey: id === 'file-2' ? 'resource-2' : null,
+  version: null,
+  capabilities: { canDownload: true, canModifyContent: true },
+})
 
 const previous = {
   key: 'active' as const, fileId: 'previous-file', link: 'link', resourceKey: 'previous-key',
@@ -29,16 +41,13 @@ const previous = {
   lastSyncedFingerprint: 'previous-reference',
 }
 
-describe('autorização por arquivo no painel Drive', () => {
+describe('compartilhamento Google Drive no painel', () => {
   beforeEach(async () => {
     vi.resetAllMocks()
     await resetDatabaseForTest()
     window.history.replaceState(null, '', '/configuracoes')
-    vi.mocked(downloadDriveJson).mockResolvedValue({
-      metadata: { id: 'shared-file', name: 'compartilhado.json', mimeType: 'application/json', modifiedTime: null, webViewLink: null, resourceKey: null, version: null, capabilities: {} },
-      data: { format: 'lista-de-materiais', version: 1, exportedAt: '2026-09-07', products: [], materialLists: [], materialListEntries: [] },
-      etag: null,
-    })
+    vi.mocked(downloadDriveJson).mockResolvedValue({ metadata: metadata('shared-file'), data: remoteData, etag: null })
+    vi.mocked(listDriveJsonFiles).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -46,62 +55,99 @@ describe('autorização por arquivo no painel Drive', () => {
     window.history.replaceState(null, '', '/')
   })
 
-  it('aguarda a seleção do arquivo do link antes de consultar ou persistir o vínculo', async () => {
+  it('aceita o link completo do aplicativo e consulta diretamente o arquivo', async () => {
     const user = userEvent.setup()
-    let select!: (value: { fileId: string; resourceKey: string | null }) => void
-    vi.mocked(chooseDriveFile).mockReturnValue(new Promise((resolve) => { select = resolve }))
     window.history.replaceState(null, '', '/configuracoes#drive=shared-file&resourceKey=link-key')
     render(<DriveSyncPanel />)
 
-    await user.click(screen.getByRole('button', { name: 'Autorizar e vincular' }))
+    await user.click(screen.getByRole('button', { name: 'Vincular arquivo' }))
 
-    expect(chooseDriveFile).toHaveBeenCalledWith('test-token', 'shared-file')
-    expect(downloadDriveJson).not.toHaveBeenCalled()
-    expect(await getDriveSync()).toBeUndefined()
-    select({ fileId: 'shared-file', resourceKey: null })
-
+    await waitFor(() => expect(downloadDriveJson).toHaveBeenCalledWith('test-token', 'shared-file', 'link-key'))
     expect(await screen.findByRole('status')).toHaveTextContent('vinculado')
-    expect(downloadDriveJson).toHaveBeenCalledWith('test-token', 'shared-file', 'link-key')
     expect(await getDriveSync()).toMatchObject({ fileId: 'shared-file', resourceKey: 'link-key' })
     expect(await db.products.count()).toBe(0)
   })
 
-  it('preserva o vínculo anterior se a pessoa cancelar a seleção', async () => {
-    await saveDriveSync(previous)
-    vi.mocked(chooseDriveFile).mockResolvedValue(null)
+  it('aceita um ID simples sem substituir o catálogo local', async () => {
     const user = userEvent.setup()
+    const product: ProductRecord = { id: 'local', productCode: 'local', name: 'Local', category: 'm', unit: 'KG', weight: null, purchaseQuoteValue: null, saleValue: null, notes: null, preparation: null, recipe: null, imageUrl: null, createdAt: '2026-01-01', updatedAt: '2026-01-01' }
+    await saveProduct(product)
     render(<DriveSyncPanel />)
 
-    await user.click(screen.getByRole('button', { name: 'Escolher arquivo' }))
-
-    expect(downloadDriveJson).not.toHaveBeenCalled()
-    expect(await getDriveSync()).toEqual(previous)
-  })
-
-  it('permite autorizar novamente um vínculo antigo sem perder a referência de sincronização', async () => {
-    await saveDriveSync(previous)
-    vi.mocked(chooseDriveFile).mockResolvedValue({ fileId: 'previous-file', resourceKey: null })
-    const user = userEvent.setup()
-    render(<DriveSyncPanel />)
-
-    await user.click(await screen.findByRole('button', { name: 'Autorizar arquivo' }))
-
-    await waitFor(() => expect(downloadDriveJson).toHaveBeenCalledWith('test-token', 'previous-file', 'previous-key'))
-    expect(await screen.findByRole('status')).toHaveTextContent('vinculado')
-    expect(await getDriveSync()).toMatchObject({ fileId: 'previous-file', lastSyncedFingerprint: 'previous-reference' })
-  })
-
-  it('não vincula outro arquivo quando a seleção difere do link informado', async () => {
-    await saveDriveSync(previous)
-    vi.mocked(chooseDriveFile).mockResolvedValue({ fileId: 'different-file', resourceKey: null })
-    const user = userEvent.setup()
-    render(<DriveSyncPanel />)
     await user.type(screen.getByLabelText('Link ou ID do arquivo compartilhado'), 'shared-file')
+    await user.click(screen.getByRole('button', { name: 'Vincular arquivo' }))
 
-    await user.click(screen.getByRole('button', { name: 'Autorizar e vincular' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Nenhum dado local foi substituído')
+    expect(await db.products.get('local')).toEqual(product)
+  })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Selecione o mesmo arquivo')
-    expect(downloadDriveJson).not.toHaveBeenCalled()
+  it('encontra nenhum arquivo sem criar uma cópia nova', async () => {
+    const user = userEvent.setup()
+    await saveDriveSync(previous)
+    render(<DriveSyncPanel />)
+
+    await user.click(screen.getByRole('button', { name: 'Encontrar meu arquivo' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Nenhum arquivo “lista-de-materiais.json” foi encontrado')
     expect(await getDriveSync()).toEqual(previous)
+  })
+
+  it('vincula automaticamente o único arquivo encontrado', async () => {
+    const user = userEvent.setup()
+    vi.mocked(listDriveJsonFiles).mockResolvedValue([metadata('file-1')])
+    render(<DriveSyncPanel />)
+
+    await user.click(screen.getByRole('button', { name: 'Encontrar meu arquivo' }))
+
+    await waitFor(() => expect(downloadDriveJson).toHaveBeenCalledWith('test-token', 'file-1', null))
+    expect(await getDriveSync()).toMatchObject({ fileId: 'file-1' })
+  })
+
+  it('preserva o vínculo anterior quando o único arquivo encontrado tem JSON inválido', async () => {
+    const user = userEvent.setup()
+    await saveDriveSync(previous)
+    vi.mocked(listDriveJsonFiles).mockResolvedValue([metadata('file-1')])
+    vi.mocked(downloadDriveJson).mockRejectedValue(new Error('O arquivo do Drive não contém um JSON válido.'))
+    render(<DriveSyncPanel />)
+
+    await user.click(screen.getByRole('button', { name: 'Encontrar meu arquivo' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('JSON válido')
+    expect(await getDriveSync()).toEqual(previous)
+  })
+
+  it('apresenta vários arquivos com data para escolha e valida somente o escolhido', async () => {
+    const user = userEvent.setup()
+    vi.mocked(listDriveJsonFiles).mockResolvedValue([metadata('file-1'), metadata('file-2', '2026-09-06T12:00:00.000Z')])
+    render(<DriveSyncPanel />)
+
+    await user.click(screen.getByRole('button', { name: 'Encontrar meu arquivo' }))
+
+    expect(await screen.findByRole('heading', { name: 'Escolha seu arquivo' })).toBeInTheDocument()
+    const choices = screen.getAllByRole('button', { name: /lista-de-materiais\.json/ })
+    expect(choices).toHaveLength(2)
+    expect(screen.getAllByText(/Alterado em/)).toHaveLength(2)
+    await user.click(choices[1]!)
+
+    await waitFor(() => expect(downloadDriveJson).toHaveBeenCalledWith('test-token', 'file-2', 'resource-2'))
+    expect(await getDriveSync()).toMatchObject({ fileId: 'file-2', resourceKey: 'resource-2' })
+  })
+
+  it('mantém o recebimento explícito e permite leitura quando o arquivo é somente leitura', async () => {
+    const user = userEvent.setup()
+    await saveDriveSync({ ...previous, fileId: 'shared-file', resourceKey: null, canModifyContent: false })
+    render(<DriveSyncPanel />)
+
+    const sendButton = await screen.findByRole('button', { name: 'Enviar dados' })
+    expect(sendButton).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Receber dados' }))
+    const dialog = screen.getByRole('dialog', { name: 'Substituir os dados deste aparelho?' })
+    const receiveButton = within(dialog).getByRole('button', { name: 'Receber dados' })
+    expect(receiveButton).toBeDisabled()
+    await user.click(within(dialog).getByRole('checkbox'))
+    await user.click(receiveButton)
+
+    await waitFor(() => expect(db.products.count()).resolves.toBe(0))
+    expect(await screen.findByRole('status')).toHaveTextContent('Dados recebidos')
   })
 })

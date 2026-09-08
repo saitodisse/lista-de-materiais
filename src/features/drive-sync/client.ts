@@ -20,6 +20,11 @@ export interface DriveRemoteFile {
   etag: string | null
 }
 
+interface DriveFileListResponse {
+  files?: Array<Partial<DriveFileMetadata>>
+  nextPageToken?: string
+}
+
 export class DriveApiError extends Error {
   readonly status: number
   readonly reason: string | null
@@ -38,7 +43,7 @@ export function describeDriveApiError(error: DriveApiError): string {
   if (error.reason === 'accessNotConfigured') return 'A Google Drive API não está habilitada no projeto deste cliente OAuth. Habilite a Drive API no Google Cloud e tente novamente.'
   if (error.reason === 'insufficientPermissions') return 'A autorização Google não concedeu a permissão necessária para criar ou alterar este arquivo. Desconecte a conta, autorize novamente e tente outra vez.'
   if (error.reason === 'insufficientFilePermissions') return 'A conta tem acesso de leitura, mas não pode alterar este arquivo. Peça permissão de editor ao proprietário.'
-  if (error.reason === 'appNotAuthorizedToFile') return 'O aplicativo ainda não foi autorizado para este arquivo. Selecione o arquivo no Google Drive para autorizar o acesso. Para um vínculo existente, use Autorizar arquivo.'
+  if (error.reason === 'appNotAuthorizedToFile') return 'O aplicativo ainda não foi autorizado para este arquivo. Conecte novamente a conta Google e confirme a permissão para acessar arquivos do Drive.'
   if (error.reason === 'storageQuotaExceeded') return 'A conta Google não tem espaço disponível para criar este arquivo.'
   if (error.reason === 'dailyLimitExceeded' || error.reason === 'rateLimitExceeded' || error.reason === 'userRateLimitExceeded') return 'O projeto ou a conta atingiu o limite de solicitações do Google Drive. Aguarde e tente novamente.'
   if (error.reason === 'domainPolicy') return 'Uma política da organização Google Workspace bloqueou esta operação.'
@@ -85,6 +90,48 @@ function mapMetadata(value: Partial<DriveFileMetadata>): DriveFileMetadata {
     capabilities: value.capabilities ?? {},
   }
 }
+
+const DEFAULT_DRIVE_FILE_NAME = 'lista-de-materiais.json'
+
+export async function listDriveJsonFiles(token: string): Promise<DriveFileMetadata[]> {
+  const files: DriveFileMetadata[] = []
+  let pageToken: string | undefined
+  const query = [
+    `name = '${DEFAULT_DRIVE_FILE_NAME}'`,
+    'trashed = false',
+    "'me' in owners",
+  ].join(' and ')
+
+  do {
+    const params = new URLSearchParams({
+      corpora: 'user',
+      includeItemsFromAllDrives: 'true',
+      orderBy: 'modifiedTime desc',
+      pageSize: '1000',
+      q: query,
+      spaces: 'drive',
+      supportsAllDrives: 'true',
+      fields: `nextPageToken,files(${fields()})`,
+    })
+    if (pageToken) params.set('pageToken', pageToken)
+    const { value } = await requestJson<DriveFileListResponse>(`${DRIVE_API}/files?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    for (const file of value.files ?? []) {
+      const metadata = mapMetadata(file)
+      if (metadata.id) files.push(metadata)
+    }
+    const nextPage = value.nextPageToken
+    if (!nextPage || nextPage === pageToken) break
+    pageToken = nextPage
+  } while (pageToken)
+
+  return files
+}
+
+export const findDriveJsonFiles = listDriveJsonFiles
+export const listDriveFiles = listDriveJsonFiles
+export const findMyDriveFiles = listDriveJsonFiles
 
 export async function getDriveFileMetadata(token: string, fileId: string, resourceKey?: string | null): Promise<{ metadata: DriveFileMetadata; etag: string | null }> {
   const url = `${DRIVE_API}/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=${encodeURIComponent(fields())}`
