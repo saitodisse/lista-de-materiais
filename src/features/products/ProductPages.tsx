@@ -4,7 +4,7 @@ import { ClipboardCopy, Edit3, Printer, Search, Trash2 } from 'lucide-react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { categoryName, formatCurrency, formatQuantity, unitName } from '../../components/format'
 import { EmptyState, ErrorNotice, PageHeader } from '../../components/Page'
-import { db, deleteProduct, getProductDependencies, saveProduct } from '../../db/database'
+import { deleteProduct, getProduct, getProductDependencies, listProducts, saveProduct } from '../../db/database'
 import { categoryOptions, ProductDependencyError, type ProductDependencies, type ProductRecord } from '../../domain/catalog'
 import { ProductBomTree } from '../bom/ProductBomTree'
 import { calculateProductCost } from '../bom/calculator'
@@ -14,7 +14,8 @@ import { useProductFilters } from './useProductFilters'
 import { useProductListView } from './useProductListView'
 
 export function ProductsPage() {
-  const products = useLiveQuery(() => db.products.orderBy('name').toArray())
+  const { profileId } = useParams({ strict: false }) as { profileId: string }
+  const products = useLiveQuery(() => listProducts(profileId), [profileId])
   const [view, setView] = useProductListView()
   const { search, setSearch, selectedCategories, toggleCategory } = useProductFilters()
   if (!products) return <p className="loading-state">Abrindo o catálogo local…</p>
@@ -25,8 +26,8 @@ export function ProductsPage() {
   })
   return (
     <div className="page">
-      <PageHeader dataGuide="catalog-table-header" eyebrow="catálogo" title="Produtos" description="Cada ficha tem um código permanente, medidas e uma receita opcional." action={{ to: '/produtos/novo', label: 'Novo Produto' }} help={view === 'table' ? <GuideHelpButton topic="catalogo-tabela" /> : undefined} />
-      {products.length === 0 ? <EmptyState title="Seu catálogo está vazio" action={<Link to="/produtos/novo" className="button primary">Criar primeiro Produto</Link>}>Comece por uma matéria-prima, embalagem ou Produto final.</EmptyState> : (
+  <PageHeader dataGuide="catalog-table-header" eyebrow="catálogo" title="Produtos" description="Cada ficha tem um código permanente, medidas e uma receita opcional." action={{ to: `/perfis/${profileId}/produtos/novo`, label: 'Novo Produto' }} help={view === 'table' ? <GuideHelpButton topic="catalogo-tabela" /> : undefined} />
+      {products.length === 0 ? <EmptyState title="Seu catálogo está vazio" action={<a href={`/perfis/${profileId}/produtos/novo`} className="button primary">Criar primeiro Produto</a>}>Comece por uma matéria-prima, embalagem ou Produto final.</EmptyState> : (
         <>
           <div className="catalog-toolbar" data-guide="catalog-table-toolbar">
             <p>{filteredProducts.length} de {products.length} Produto{products.length === 1 ? '' : 's'} no catálogo local</p>
@@ -42,8 +43,8 @@ export function ProductsPage() {
             </div>
           </section>
           {filteredProducts.length === 0 ? <EmptyState title="Nenhum Produto encontrado">Ajuste a busca ou ligue outras categorias para consultar o catálogo.</EmptyState> : view === 'cards' ? <section className="record-grid" aria-label="Produtos cadastrados">
-            {filteredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
-          </section> : <ProductTable products={filteredProducts} catalogue={products} />}
+            {filteredProducts.map((product) => <ProductCard key={product.id} product={product} profileId={profileId} />)}
+          </section> : <ProductTable products={filteredProducts} catalogue={products} profileId={profileId} />}
         </>
       )}
     </div>
@@ -54,9 +55,9 @@ function normalizeSearch(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
 }
 
-function ProductCard({ product }: { product: ProductRecord }) {
+function ProductCard({ product, profileId }: { product: ProductRecord; profileId: string }) {
   return (
-    <Link to="/produtos/$productCode" params={{ productCode: product.productCode }} className="record-card">
+    <Link to="/perfis/$profileId/produtos/$productCode" params={{ profileId, productCode: product.productCode }} className="record-card">
       <div className="record-card-head"><CategoryMark category={product.category} /><code>{product.productCode}</code></div>
       <h2>{product.name}</h2>
       <p>{categoryName(product.category)} · {unitName(product.unit)}</p>
@@ -69,7 +70,7 @@ function CategoryMark({ category }: { category: ProductRecord['category'] }) {
   return <span className="category-mark" data-category={category} aria-hidden="true">{category === 'c' ? 'o' : category}</span>
 }
 
-function ProductTable({ products, catalogue }: { products: ProductRecord[]; catalogue: ProductRecord[] }) {
+function ProductTable({ products, catalogue, profileId }: { products: ProductRecord[]; catalogue: ProductRecord[]; profileId: string }) {
   const calculatedCosts = useMemo(() => new Map(products.map((product) => {
     if (!product.recipe?.length) return [product.productCode, product.purchaseQuoteValue] as const
     try {
@@ -88,7 +89,7 @@ function ProductTable({ products, catalogue }: { products: ProductRecord[]; cata
         <tbody>
           {products.map((product) => <tr key={product.id}>
             <td data-column="category" title={categoryName(product.category)} aria-label={categoryName(product.category)}><span className="category-cell"><CategoryMark category={product.category} /></span></td>
-            <td data-column="product"><div className="record-card-head"><Link to="/produtos/$productCode" params={{ productCode: product.productCode }}>{product.name}</Link><code className="catalog-product-code">{product.productCode}</code></div></td>
+            <td data-column="product"><div className="record-card-head"><Link to="/perfis/$profileId/produtos/$productCode" params={{ profileId, productCode: product.productCode }}>{product.name}</Link><code className="catalog-product-code">{product.productCode}</code></div></td>
             <td>{product.unit}</td>
             <td data-column="recipe">{product.recipe?.length ? `${product.recipe.length} componente${product.recipe.length === 1 ? '' : 's'}` : 'Material terminal'}</td>
             <td data-column="purchase-cost">{calculatedCosts.get(product.productCode) == null ? '—' : formatCurrency(calculatedCosts.get(product.productCode)!)}</td>
@@ -145,43 +146,43 @@ function spreadsheetCell(value: string): string {
 }
 
 export function ProductEditorPage() {
-  const { productCode } = useParams({ strict: false }) as { productCode?: string }
+  const { profileId, productCode } = useParams({ strict: false }) as { profileId: string; productCode?: string }
   const navigate = useNavigate()
-  const products = useLiveQuery(() => db.products.toArray())
+  const products = useLiveQuery(() => listProducts(profileId), [profileId])
   const product = useMemo(() => products?.find((item) => item.productCode === productCode), [products, productCode])
   if (!products) return <p className="loading-state">Abrindo o catálogo local…</p>
-  if (productCode && !product) return <div className="page"><PageHeader title="Produto não encontrado" backTo="/produtos" /><ErrorNotice>Esse código não existe neste aparelho.</ErrorNotice></div>
+  if (productCode && !product) return <div className="page"><PageHeader title="Produto não encontrado" backTo={`/perfis/${profileId}/produtos`} /><ErrorNotice>Esse código não existe neste Perfil local.</ErrorNotice></div>
   return (
     <div className="page editor-page">
-      <PageHeader dataGuide="product-edit-header" eyebrow={product ? 'edição' : 'novo registro'} title={product ? `Editar ${product.name}` : 'Novo Produto'} description="Os componentes da receita devem existir no catálogo." backTo={product ? `/produtos/${product.productCode}` : '/produtos'} help={productCode ? <GuideHelpButton topic="edicao-produto" /> : undefined} />
+      <PageHeader dataGuide="product-edit-header" eyebrow={product ? 'edição' : 'novo registro'} title={product ? `Editar ${product.name}` : 'Novo Produto'} description="Os componentes da receita devem existir no catálogo." backTo={product ? `/perfis/${profileId}/produtos/${product.productCode}` : `/perfis/${profileId}/produtos`} help={productCode ? <GuideHelpButton topic="edicao-produto" /> : undefined} />
       <ProductForm product={product} products={products} onSave={async (record, previousCode) => {
-        await saveProduct(record, previousCode)
-        await navigate({ to: '/produtos/$productCode', params: { productCode: record.productCode } })
+        await saveProduct(record, previousCode, profileId)
+        await navigate({ to: '/perfis/$profileId/produtos/$productCode', params: { profileId, productCode: record.productCode } })
       }} />
     </div>
   )
 }
 
 export function ProductDetailPage() {
-  const { productCode } = useParams({ strict: false }) as { productCode: string }
+  const { profileId, productCode } = useParams({ strict: false }) as { profileId: string; productCode: string }
   const navigate = useNavigate()
   const result = useLiveQuery(async () => {
-    const product = await db.products.get(productCode)
-    const dependencies = product ? await getProductDependencies(productCode) : undefined
-    const products = await db.products.toArray()
+    const product = await getProduct(productCode, profileId)
+    const dependencies = product ? await getProductDependencies(productCode, profileId) : undefined
+    const products = await listProducts(profileId)
     return { product, dependencies, products }
-  }, [productCode])
+  }, [productCode, profileId])
   const [error, setError] = useState<string | null>(null)
   if (!result) return <p className="loading-state">Lendo a ficha local…</p>
-  if (!result.product || !result.dependencies) return <div className="page"><PageHeader title="Produto não encontrado" backTo="/produtos" /><ErrorNotice>Esse código não existe neste aparelho.</ErrorNotice></div>
+  if (!result.product || !result.dependencies) return <div className="page"><PageHeader title="Produto não encontrado" backTo={`/perfis/${profileId}/produtos`} /><ErrorNotice>Esse código não existe neste Perfil local.</ErrorNotice></div>
   const { product, dependencies, products } = result
   const canDelete = dependencies.recipes.length === 0 && dependencies.lists.length === 0
   const deleteCurrent = async () => {
     setError(null)
     if (!window.confirm(`Excluir “${product.name}”? Esta ação não pode ser desfeita.`)) return
     try {
-      await deleteProduct(product.productCode)
-      await navigate({ to: '/produtos' })
+      await deleteProduct(product.productCode, profileId)
+      await navigate({ to: '/perfis/$profileId/produtos', params: { profileId } })
     } catch (reason) {
       const message = reason instanceof ProductDependencyError ? dependencyMessage(reason.dependencies) : reason instanceof Error ? reason.message : 'Não foi possível excluir o Produto.'
       setError(message)
@@ -189,7 +190,7 @@ export function ProductDetailPage() {
   }
   return (
     <div className="page detail-page">
-      <PageHeader dataGuide="product-detail-header" eyebrow="ficha técnica" title={product.name} description={`${categoryName(product.category)} · ${unitName(product.unit)}`} backTo="/produtos" help={<GuideHelpButton topic="detalhe-produto" />} />
+      <PageHeader dataGuide="product-detail-header" eyebrow="ficha técnica" title={product.name} description={`${categoryName(product.category)} · ${unitName(product.unit)}`} backTo={`/perfis/${profileId}/produtos`} help={<GuideHelpButton topic="detalhe-produto" />} />
       <section className="detail-card" data-guide="product-detail-info">
         <div className="detail-title"><CategoryMark category={product.category} /><code>{product.productCode}</code></div>
         <dl className="spec-list">
@@ -203,10 +204,10 @@ export function ProductDetailPage() {
         {product.preparation && <div className="notes"><strong>Modo de preparo</strong><pre>{product.preparation}</pre></div>}
       </section>
       <div className="detail-actions detail-actions--record" data-guide="product-detail-actions">
-        <Link to="/produtos/$productCode/editar" params={{ productCode: product.productCode }} className="button secondary"><Edit3 size={17} /> Editar</Link>
+        <Link to="/perfis/$profileId/produtos/$productCode/editar" params={{ profileId, productCode: product.productCode }} className="button secondary"><Edit3 size={17} /> Editar</Link>
       </div>
       <section className="form-section" data-guide="product-detail-recipe"><div className="section-heading"><p className="eyebrow">composição</p><h2>Receita</h2></div>
-        {product.recipe?.length ? <ProductBomTree key={product.productCode} productCode={product.productCode} products={products} /> : <p className="hint-box">Este Produto não tem Receita. Ele aparece como material terminal no BOM.</p>}
+        {product.recipe?.length ? <ProductBomTree key={product.productCode} productCode={product.productCode} products={products} profileId={profileId} /> : <p className="hint-box">Este Produto não tem Receita. Ele aparece como material terminal no BOM.</p>}
       </section>
       <section className="danger-zone">
         <div>
@@ -214,7 +215,7 @@ export function ProductDetailPage() {
           <h2>Remover Produto</h2>
           {canDelete ? <p>Não há receitas nem Listas de Materiais que usem este Produto.</p> : <>
             <p>Remoção bloqueada enquanto estes registros usarem o Produto:</p>
-            <DependencyList dependencies={dependencies} />
+            <DependencyList dependencies={dependencies} profileId={profileId} />
           </>}
         </div>
       </section>
@@ -231,9 +232,9 @@ function dependencyMessage(dependencies: ProductDependencies): string {
   return parts.length ? `Não pode excluir enquanto houver dependências. ${parts.join('. ')}` : 'Não há dependências.'
 }
 
-function DependencyList({ dependencies }: { dependencies: ProductDependencies }) {
+function DependencyList({ dependencies, profileId }: { dependencies: ProductDependencies; profileId: string }) {
   return <ul className="dependency-list" aria-label="Dependências que impedem a exclusão">
-    {dependencies.recipes.map((product) => <li key={`recipe-${product.productCode}`}><span>Receita</span><Link to="/produtos/$productCode" params={{ productCode: product.productCode }}>{product.name}</Link></li>)}
-    {dependencies.lists.map((list) => <li key={`list-${list.id}`}><span>Lista de Materiais</span><Link to="/listas/$listId" params={{ listId: list.id }}>{list.name}</Link></li>)}
+    {dependencies.recipes.map((product) => <li key={`recipe-${product.productCode}`}><span>Receita</span><Link to="/perfis/$profileId/produtos/$productCode" params={{ profileId, productCode: product.productCode }}>{product.name}</Link></li>)}
+    {dependencies.lists.map((list) => <li key={`list-${list.id}`}><span>Lista de Materiais</span><Link to="/perfis/$profileId/listas/$listId" params={{ profileId, listId: list.id }}>{list.name}</Link></li>)}
   </ul>
 }

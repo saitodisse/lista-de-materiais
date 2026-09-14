@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAllLocalData, db, deleteProduct, exportLocalData, getDriveSync, importLocalData, replaceAllWithDemo, resetDatabaseForTest, saveDriveSync, saveMaterialList, saveProduct } from './database'
+import { clearAllLocalData, createProfile, db, deleteProduct, deleteProfile, exportLocalData, getDriveSync, getProfileSummary, getProduct, importLocalData, listMaterialLists, listProducts, renameProfile, replaceAllWithDemo, resetDatabaseForTest, saveDriveSync, saveMaterialList, saveProduct } from './database'
 import { ProductDependencyError, type ProductRecord } from '../domain/catalog'
 import { DEMO_LIST_ID, DEMO_PRODUCT_CODES } from '../features/demo/demoData'
 
@@ -106,5 +106,102 @@ describe('persistência Dexie', () => {
     expect(await getDriveSync()).toMatchObject({ fileId: 'file-1' })
     await clearAllLocalData()
     expect(await getDriveSync()).toMatchObject({ fileId: 'file-1' })
+  })
+})
+
+describe('isolamento entre Perfis', () => {
+  beforeEach(async () => { await resetDatabaseForTest() })
+
+  it('acepta os mismos códigos de Produto e IDs de Lista en Perfis distintos', async () => {
+    const b = await createProfile('Bodega Centro')
+    const principal = 'principal'
+    const product = rawMaterial('farinha')
+
+    await saveProduct(product, undefined, principal)
+    await saveProduct(product, undefined, b.id)
+
+    // Mismo código, distinto contenido por Perfil.
+    await saveProduct({ ...product, name: 'Harina gourmet' }, undefined, b.id)
+    expect(await getProduct('farinha', principal)).toMatchObject({ name: 'farinha' })
+    expect(await getProduct('farinha', b.id)).toMatchObject({ name: 'Harina gourmet' })
+
+    // Mismo ID de Lista sin colisión.
+    const list = { id: 'lista', name: 'Compra', createdAt: product.createdAt, updatedAt: product.updatedAt }
+    await saveMaterialList({ ...list, name: 'Compra Principal' }, [{ listId: 'lista', productCode: 'farinha', quantity: 2 }], principal)
+    await saveMaterialList({ ...list, name: 'Compra Bodega' }, [{ listId: 'lista', productCode: 'farinha', quantity: 3 }], b.id)
+    expect(await listMaterialLists(principal)).toHaveLength(1)
+    expect((await listMaterialLists(principal))[0]).toMatchObject({ name: 'Compra Principal' })
+    expect(await listMaterialLists(b.id)).toHaveLength(1)
+    expect((await listMaterialLists(b.id))[0]).toMatchObject({ name: 'Compra Bodega' })
+  })
+
+  it('no cruza dependencias ni exportaciones entre Perfiles', async () => {
+    const b = await createProfile('Bodega Final')
+    const principal = 'principal'
+    const harina = rawMaterial('farinha')
+    const masa = { ...rawMaterial('masa'), category: 's' as const, recipe: [{ id: 'farinha', quantity: 1 }] }
+    await saveProduct(harina, undefined, principal)
+    await saveProduct(masa, undefined, principal)
+    await saveProduct(harina, undefined, b.id)
+
+    // La dependencia de la receta solo existe en Principal.
+    await expect(deleteProduct('farinha', principal)).rejects.toBeInstanceOf(ProductDependencyError)
+    await deleteProduct('farinha', b.id)
+    expect(await getProduct('farinha', b.id)).toBeUndefined()
+
+    // La exportación de A no contiene datos de B y es v1 sin profileId.
+    await saveProduct({ ...rawMaterial('solo-b'), name: 'Solo B' }, undefined, b.id)
+    const principalExport = await exportLocalData(principal)
+    expect(principalExport.version).toBe(1)
+    expect(principalExport.products.every((p) => p.productCode !== 'solo-b')).toBe(true)
+    const bExport = await exportLocalData(b.id)
+    expect(bExport.products.map((p) => p.productCode)).not.toContain('masa')
+  })
+
+  it('carrega y limpia la demostración solo en el Perfil de destino', async () => {
+    const b = await createProfile('Bodega Demo')
+    const principal = 'principal'
+    await replaceAllWithDemo(principal)
+    expect((await listProducts(principal)).map((p) => p.productCode).sort()).toEqual([...DEMO_PRODUCT_CODES].sort())
+    expect(await listProducts(b.id)).toHaveLength(0)
+    expect((await getProfileSummary(b.id)).demo).toBeNull()
+
+    await clearAllLocalData(b.id)
+    expect((await getProfileSummary(principal)).demo).toBe('inserted')
+    expect((await getProfileSummary(b.id)).demo).toBe('cleared')
+    expect(await listProducts(b.id)).toHaveLength(0)
+  })
+})
+
+describe('gestión de Perfiles', () => {
+  beforeEach(async () => { await resetDatabaseForTest() })
+
+  it('exige un nombre y rechaza nombres duplicados si comparar acentos y mayúsculas', async () => {
+    await expect(createProfile('   ')).rejects.toThrow(/Informe um nome/i)
+    await createProfile('Mi Tienda')
+    await expect(createProfile('Mi tienda')).rejects.toThrow(/Já existe um Perfil/i)
+    await expect(createProfile('Mi Tienda ')).rejects.toThrow(/Já existe um Perfil/i)
+  })
+
+  it('renombra sin colisionar y protege el último Perfil de la eliminación', async () => {
+    await expect(deleteProfile('principal')).rejects.toThrow(/último Perfil/i)
+    const b = await createProfile('Bodega')
+    await renameProfile(b.id, 'Bodega Final')
+    expect(await getProfileSummary(b.id)).toBeDefined()
+
+    await renameProfile('principal', 'Principal Editado')
+    await expect(renameProfile(b.id, 'Principal Editado')).rejects.toThrow(/Já existe um Perfil/i)
+    await deleteProfile(b.id)
+  })
+
+  it('elimina un Perfil y no deja huérfanos en otros Perfiles', async () => {
+    const b = await createProfile('Bodega a borrar')
+    const product = rawMaterial('farinha')
+    await saveProduct(product, undefined, b.id)
+    await saveProduct(product, undefined, 'principal')
+    await deleteProfile(b.id)
+
+    await expect(listProducts(b.id)).rejects.toThrow(/não existe/i)
+    expect(await listProducts('principal')).toHaveLength(1)
   })
 })

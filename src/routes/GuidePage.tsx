@@ -156,9 +156,9 @@ export function GuidePage() {
         </div>
         <div className="guide-demo-action">
           <span className="guide-demo-action-label">Comece por aqui</span>
-          <DemoResetButton className="button primary guide-demo-hero-button" label="Limpar e carregar o exemplo de pizzas" onComplete={() => setDemoReady(true)} />
-          <small><ShieldCheck size={17} aria-hidden="true" /><span>Nada será substituído sem sua confirmação. O próximo passo exige que você marque um checkbox.</span></small>
-          {demoReady && <p className="guide-demo-success" role="status"><CheckCircle2 size={17} /> Demonstração carregada. Os links abaixo agora abrem os registros salvos.</p>}
+          <DemoResetButton className="button primary guide-demo-hero-button" label="Abrir o Perfil “Demonstração”" onComplete={(profileId) => { if (profileId) { setDemoReady(true); window.location.assign(`/perfis/${profileId}/produtos`) } }} />
+          <small><ShieldCheck size={17} aria-hidden="true" /><span>A demo abre num Perfil local separado “Demonstração” e não altera o Perfil atual.</span></small>
+          {demoReady && <p className="guide-demo-success" role="status"><CheckCircle2 size={17} /> Demonstração carregada. Os links abaixo abrem os registros do Perfil “Demonstração”.</p>}
         </div>
       </section>
 

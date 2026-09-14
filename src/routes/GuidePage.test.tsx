@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { db, resetDatabaseForTest } from '../db/database'
+import { db, getOrCreateDemoProfile, listProducts, resetDatabaseForTest } from '../db/database'
 import { guideProducts, guideTrees } from '../features/guide/guideData'
 import { DEMO_LIST_ID, DEMO_PRODUCT_CODES } from '../features/demo/demoData'
 import { GuidePage } from './GuidePage'
@@ -71,8 +71,8 @@ describe('guia Como usar', () => {
     expect(within(demoHero).getAllByRole('button')).toHaveLength(1)
     expect(within(demoHero).queryByRole('complementary')).not.toBeInTheDocument()
     expect(within(demoHero).getByText('Comece por aqui')).toBeInTheDocument()
-    expect(within(demoHero).getByText(/Nada será substituído sem sua confirmação/)).toBeInTheDocument()
-    expect(within(demoHero).getByRole('button', { name: 'Limpar e carregar o exemplo de pizzas' })).toHaveClass('guide-demo-hero-button')
+    expect(within(demoHero).getByText(/A demo abre num Perfil local separado/)).toBeInTheDocument()
+    expect(within(demoHero).getByRole('button', { name: 'Abrir o Perfil “Demonstração”' })).toHaveClass('guide-demo-hero-button')
     const materialSection = document.querySelector<HTMLElement>('#cadastre')!
     expect(within(materialSection).getByRole('heading', { name: 'Três terminam aqui' })).toBeInTheDocument()
     expect(within(materialSection).getByRole('heading', { name: 'Dois podem ser decompostos' })).toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('guia Como usar', () => {
     expect(screen.getByAltText(/massa de pizza sorridente/)).toBeInTheDocument()
     expect(screen.getByAltText(/estrela do show/)).toBeInTheDocument()
     expect(screen.getByAltText(/pacote completo/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Limpar e carregar o exemplo de pizzas' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir o Perfil “Demonstração”' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Iniciar tour de cadastro de Produto' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /Abrir o plano de exemplo/ })[0]).toHaveAttribute('href', `/listas/${DEMO_LIST_ID}`)
 
@@ -144,23 +144,26 @@ describe('guia Como usar', () => {
     expect(await db.products.count()).toBe(0)
   })
 
-  it('exige o checkbox antes de substituir a base e carrega os 14 Produtos ligados pelo guia', async () => {
+  it('exige o checkbox e abre a demonstração num Perfil separado sem tocar o atual', async () => {
     const user = userEvent.setup()
     await db.products.add({ ...guideProducts[0]!, id: 'produto-local', productCode: 'produto-local', name: 'Produto local' })
     renderGuidePage()
 
-    await user.click(await screen.findByRole('button', { name: 'Limpar e carregar o exemplo de pizzas' }))
+    await user.click(await screen.findByRole('button', { name: 'Abrir o Perfil “Demonstração”' }))
 
-    const dialog = screen.getByRole('dialog', { name: 'Substituir todos os dados deste aparelho?' })
-    const replaceButton = within(dialog).getByRole('button', { name: 'Limpar e carregar demonstração' })
+    const dialog = screen.getByRole('dialog', { name: 'Carregar o exemplo no Perfil “Demonstração”?' })
+    const replaceButton = within(dialog).getByRole('button', { name: 'Abrir Perfil Demonstração' })
     expect(replaceButton).toBeDisabled()
-    await user.click(within(dialog).getByRole('checkbox', { name: /Entendo que meus dados atuais serão apagados/ }))
+    await user.click(within(dialog).getByRole('checkbox'))
     expect(replaceButton).toBeEnabled()
     await user.click(replaceButton)
 
-    await waitFor(async () => expect(await db.products.count()).toBe(DEMO_PRODUCT_CODES.length))
-    expect(await db.products.get('produto-local')).toBeUndefined()
-    expect(await db.materialLists.get(DEMO_LIST_ID)).toBeDefined()
+    const demoProfile = await getOrCreateDemoProfile()
+    await waitFor(async () => expect(await listProducts(demoProfile.id)).toHaveLength(DEMO_PRODUCT_CODES.length))
+    // El Perfil actual (Principal) permanece intacto.
+    expect(await db.products.get('produto-local')).toBeDefined()
+    expect(await listProducts(demoProfile.id)).not.toHaveLength(0)
+    expect((await listProducts(demoProfile.id)).some((p) => p.productCode === 'produto-local')).toBe(false)
     for (const productCode of DEMO_PRODUCT_CODES) {
       expect(screen.getAllByRole('link').some((link) => link.getAttribute('href') === `/produtos/${productCode}`)).toBe(true)
     }

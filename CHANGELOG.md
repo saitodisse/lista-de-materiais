@@ -2,6 +2,20 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.8.0 — 2026-09-14
+
+### Added
+
+- Perfis locais isolados com Perfil `Principal`, criação, renomeação, exclusão protegida e seletor responsivo.
+- Produtos, Receitas, Listas, demonstração, cópias JSON e vínculo do Google Drive separados por Perfil.
+- Migração transacional do schema Dexie v7 para stores por Perfil, preservando catálogo, metadados e vínculo Drive.
+- Rotas profundas `/perfis/<perfil>/...`, com aliases legados redirecionados ao Perfil local válido.
+
+### Fixed
+
+- O bootstrap inicial cria o Perfil `Principal` antes de montar as consultas reativas, evitando erro em rotas profundas de uma base vazia.
+- O seletor de Perfil usa uma única seta customizada, sem a marca nativa duplicada do elemento `select`.
+
 ## 0.7.1 — 2026-09-08
 
 ### Documentation

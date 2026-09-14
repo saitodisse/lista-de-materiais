@@ -84,8 +84,8 @@ function DriveFileChoices({ files, onSelect, onClose, busy }: { files: DriveFile
   </div>
 }
 
-export function DriveSyncPanel() {
-  const record = useLiveQuery(() => getDriveSync(), [])
+export function DriveSyncPanel({ profileId }: { profileId?: string } = {}) {
+  const record = useLiveQuery(() => getDriveSync(profileId), [profileId])
   const [connected, setConnected] = useState(isGoogleConnected())
   const [restoring, setRestoring] = useState(() => !isGoogleConnected() && hasGoogleConnectionPreference())
   const [accountEmail, setAccountEmail] = useState<string | null>(null)
@@ -140,7 +140,7 @@ export function DriveSyncPanel() {
   })
 
   const create = () => void run('create', async () => {
-    const result = await createDriveShare()
+    const result = await createDriveShare(profileId)
     setReference(result.record.link)
     setSuccess('Arquivo criado e enviado ao Google Drive. Configure o compartilhamento no Drive antes de enviar o link.')
     setConfirm(null)
@@ -149,13 +149,13 @@ export function DriveSyncPanel() {
   const attach = () => void run('attach', async () => {
     const parsed = parseDriveReference(reference)
     if (!parsed) throw new Error('Cole um link ou ID válido de um arquivo JSON do Google Drive.')
-    const result = await attachDriveFile(parsed)
+    const result = await attachDriveFile(parsed, profileId)
     setReference(result.record.link)
     setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
   })
 
   const findMyFile = () => void run('find', async () => {
-    const files = await findMyDriveFiles()
+    const files = await findMyDriveFiles(profileId)
     if (files.length === 0) {
       setSuccess('Nenhum arquivo “lista-de-materiais.json” foi encontrado entre os arquivos desta conta. Nenhum arquivo novo foi criado.')
       return
@@ -164,7 +164,7 @@ export function DriveSyncPanel() {
       setFoundFiles(files)
       return
     }
-    const result = await attachDriveMetadata(files[0]!)
+    const result = await attachDriveMetadata(files[0]!, profileId)
     setReference(result.record.link)
     setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
   })
@@ -172,37 +172,37 @@ export function DriveSyncPanel() {
   const selectFoundFile = (file: DriveFileMetadata) => {
     setFoundFiles(null)
     void run('find-select', async () => {
-      const result = await attachDriveMetadata(file)
+      const result = await attachDriveMetadata(file, profileId)
       setReference(result.record.link)
       setSuccess(`Arquivo “${result.record.fileName ?? 'JSON'}” vinculado. Nenhum dado local foi substituído.`)
     })
   }
 
   const refresh = () => void run('refresh', async () => {
-    const result = await refreshDriveShare()
+    const result = await refreshDriveShare(profileId)
     setSuccess(`Consulta concluída. Cópia remota de ${formatDate(result.record.lastRemoteModifiedTime)}.`)
   })
 
   const receive = () => setConfirm('receive')
   const confirmReceive = () => void run('receive', async () => {
-    await receiveDriveShare()
+    await receiveDriveShare(undefined, profileId)
     setConfirm(null)
     setSuccess('Dados recebidos do Google Drive e aplicados neste aparelho.')
   })
 
   const confirmConflictReceive = () => void run('conflict-receive', async () => {
-    await sendDriveShare('receive')
+    await sendDriveShare('receive', profileId)
     setConfirm(null)
     setSuccess('Dados recebidos do Google Drive.')
   })
 
   const send = () => void run('send', async () => {
-    const result = await sendDriveShare()
+    const result = await sendDriveShare(undefined, profileId)
     setSuccess(result.uploaded ? 'Dados enviados ao Google Drive.' : 'As cópias já estavam iguais.')
   })
 
   const resolveConflict = (decision: SyncDecision) => void run('conflict', async () => {
-    await sendDriveShare(decision)
+    await sendDriveShare(decision, profileId)
     setConflict(null)
     setSuccess(decision === 'receive' ? 'Dados recebidos do Google Drive.' : 'Arquivo do Drive substituído pelos dados locais.')
   })
@@ -215,7 +215,7 @@ export function DriveSyncPanel() {
   })
 
   const disconnect = () => void run('disconnect', async () => {
-    await disconnectDriveShare()
+    await disconnectDriveShare(profileId)
     setSuccess('O vínculo foi removido deste aparelho. O arquivo do Drive permanece intacto.')
   })
 

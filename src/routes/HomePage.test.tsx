@@ -2,13 +2,20 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { db, resetDatabaseForTest } from '../db/database'
+import { db, getOrCreateDemoProfile, listProducts, resetDatabaseForTest } from '../db/database'
 import { HomePage } from './HomePage'
+import { DEMO_LIST_ID, DEMO_PRODUCT_CODES } from '../features/demo/demoData'
+import type { ProductRecord } from '../domain/catalog'
+
+function rawMaterial(): ProductRecord {
+  const now = '2026-01-01T00:00:00.000Z'
+  return { id: 'local-global', productCode: 'local-global', name: 'Local', category: 'm', unit: 'KG', weight: null, purchaseQuoteValue: null, saleValue: null, notes: null, preparation: null, recipe: null, imageUrl: null, createdAt: now, updatedAt: now }
+}
 
 function renderSettingsPage() {
   const rootRoute = createRootRoute({ component: Outlet })
-  const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/configuracoes', component: HomePage })
-  const router = createRouter({ routeTree: rootRoute.addChildren([settingsRoute]), history: createMemoryHistory({ initialEntries: ['/configuracoes'] }) })
+  const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/configuracoes', component: HomePage })
+  const router = createRouter({ routeTree: rootRoute.addChildren([settingsRoute]), history: createMemoryHistory({ initialEntries: ['/perfis/principal/configuracoes'] }) })
   return render(<RouterProvider router={router} />)
 }
 
@@ -41,25 +48,42 @@ describe('controle de dados locais', () => {
 
     await user.upload(input!, new File(['{}'], 'dados.json', { type: 'application/json' }))
 
-    expect(confirm).toHaveBeenCalledWith('Importar substituirá todos os Produtos, Receitas, Listas e entradas deste aparelho. Deseja continuar?')
+    expect(confirm).toHaveBeenCalledWith('Importar substituirá todos os Produtos, Receitas, Listas e entradas do Perfil “principal”. Deseja continuar?')
     expect(await db.products.count()).toBe(0)
   })
 
-  it('exige confirmação por checkbox para substituir pela demonstração e ainda permite limpar tudo', async () => {
+  it('exige confirmação para abrir a demonstração num Perfil separado sem tocar o atual', async () => {
     const user = userEvent.setup()
+    await db.products.add(rawMaterial())
     renderSettingsPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Limpar e carregar demonstração' }))
-    const dialog = screen.getByRole('dialog', { name: 'Substituir todos os dados deste aparelho?' })
-    const replaceButton = within(dialog).getByRole('button', { name: 'Limpar e carregar demonstração' })
+    const trigger = await screen.findByRole('button', { name: 'Abrir Perfil Demonstração' })
+    expect(await db.products.count()).toBe(1)
+    await user.click(trigger)
+
+    const dialog = screen.getByRole('dialog', { name: 'Carregar o exemplo no Perfil “Demonstração”?' })
+    const replaceButton = within(dialog).getByRole('button', { name: 'Abrir Perfil Demonstração' })
     expect(replaceButton).toBeDisabled()
     await user.click(within(dialog).getByRole('checkbox'))
     await user.click(replaceButton)
 
-    await waitFor(async () => expect(await db.products.get('pacote-3-pizzas-mucarela')).toBeDefined())
-    await user.click(await screen.findByRole('button', { name: 'Limpar tudo' }))
+    await waitFor(async () => expect(await db.products.count()).toBe(1))
+    // O Perfil atual (Principal) permanece intacto: a demo foi isolada.
+    expect(await db.products.get('local-global')).toBeDefined()
+    expect(await db.products.get(DEMO_LIST_ID)).toBeUndefined()
+    const demoProfile = await getOrCreateDemoProfile()
+    expect(await listProducts(demoProfile.id)).toHaveLength(DEMO_PRODUCT_CODES.length)
+  })
 
-    const clearDialog = screen.getByRole('dialog', { name: 'Limpar todos os dados deste aparelho?' })
+  it('permite limpar o catálogo do Perfil atual após confirmação', async () => {
+    const user = userEvent.setup()
+    await db.products.add(rawMaterial())
+    await db.meta.put({ key: 'demo-state', value: 'inserted' })
+    renderSettingsPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Limpar este Perfil' }))
+
+    const clearDialog = screen.getByRole('dialog', { name: 'Limpar todos os dados deste Perfil?' })
     const clearButton = within(clearDialog).getByRole('button', { name: 'Limpar todos os dados' })
     expect(clearButton).toBeDisabled()
     await user.click(within(clearDialog).getByRole('checkbox'))
@@ -68,6 +92,6 @@ describe('controle de dados locais', () => {
     expect(await db.materialLists.count()).toBe(0)
     expect(await db.materialListEntries.count()).toBe(0)
     expect(await db.meta.get('demo-state')).toMatchObject({ value: 'cleared' })
-    expect(await screen.findByRole('button', { name: 'Limpar e carregar demonstração' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Abrir Perfil Demonstração' })).toBeEnabled()
   })
 })

@@ -45,7 +45,8 @@ describe('cliente Google Drive', () => {
 
     expect(files.map((file) => file.id)).toEqual(['file-1', 'file-2'])
     const firstUrl = String(fetchMock.mock.calls[0]?.[0])
-    expect(firstUrl).toContain("name+%3D+%27lista-de-materiais.json%27+and+trashed+%3D+false+and+%27me%27+in+owners")
+    expect(firstUrl).toContain('contains+%27Lista+de+Materiais+-+%27+or+name+%3D+%27lista-de-materiais.json%27')
+    expect(firstUrl).toContain("trashed+%3D+false+and+%27me%27+in+owners")
     expect(firstUrl).toContain('pageSize=1000')
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('pageToken=next-page')
   })

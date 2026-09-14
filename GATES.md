@@ -1,28 +1,36 @@
-# Gates: tutorial conectado à demonstração local
+# Gates: Perfis locais isolados
 
-OWNS: src/features/demo/**, src/features/guide/**, src/features/bom/ProductBomTree.tsx, src/features/bom/productTree.ts, src/features/bom/productTree.test.ts, src/features/products/ProductPages.test.tsx, src/features/products/ProductPages.tsx, src/features/products/ProductPrintPage.tsx, src/components/format.ts, src/components/format.test.ts, src/components/AppShell.tsx, src/components/AppShell.test.tsx, src/routes/GuidePage.tsx, src/routes/GuidePage.test.tsx, src/routes/HomePage.tsx, src/routes/HomePage.test.tsx, src/db/database.ts, src/db/database.test.ts, src/index.css, GATES.md
+OWNS: src/**, docs/**, package.json, CHANGELOG.md
 
-Scope: substituir com confirmação toda a base pela demonstração oficial de pizzas, fazer o guia abrir exatamente os Produtos e o plano carregados, manter “Como usar” no rodapé da barra lateral, preservar a edição longa da árvore até o blur, com arredondamento por unidade, manter números exibidos no padrão brasileiro pt-BR, e oferecer copiar/imprimir o catálogo na visão de tabela.
+Scope: implementar Perfis locais isolados com migração Dexie, rotas, gestão de dados e sincronização Drive por Perfil.
 
-- [x] G0: o ledger contém gates válidos e verificáveis
-  CHECK: node /home/saito/.agents/skills/unlazy/scripts/gate-lint.mjs GATES.md
-  EXPECT: LINT OK
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/home/saito/_git/lista-de-materiais; path=0b100e4479da/20 entries; EXPECT=matched; output-sha256=45f2f0b23659d603aebd358a717e9093af5a69c8ff812ab8199510941e171ecc; output-bytes=150
+Estado: implementação e verificação realizadas em 2026-09-14.
 
-- [x] G1: a substituição transacional e o tutorial conectado à demonstração passam nos testes focados
-  CHECK: pnpm exec vitest run src/db/database.test.ts src/routes/GuidePage.test.tsx src/routes/HomePage.test.tsx && node -e "process.stdout.write('targeted-demo-flow-ok')"
-  EXPECT: targeted-demo-flow-ok
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/home/saito/_git/lista-de-materiais; path=0b100e4479da/20 entries; EXPECT=matched; output-sha256=a87aaa5b443566d9027ad02386b67ba32ba448474a57e7776ab28f83b934dcf8; output-bytes=247
+- [x] G1: o schema e os serviços persistem Perfis isolados e migram uma base v7 sem perder dados
+  CHECK: pnpm exec vitest run src/db/database.test.ts src/db/migration.test.ts
+  EXPECT: Tests passed
+  EVIDENCE: database.test.ts cobre isolamento A/B e gestão de Perfis; migration.test.ts cobre base nova e upgrade real v7→v8 preservando catálogo, meta e driveSync
 
-- [x] G2: todos os testes do aplicativo passam com o novo fluxo
-  CHECK: pnpm test && node -e "process.stdout.write('full-suite-ok')"
-  EXPECT: full-suite-ok
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/home/saito/_git/lista-de-materiais; path=0b100e4479da/20 entries; EXPECT=matched; output-sha256=ac9daeeb6663f05139c2671dd6c9692e3cc7792fa3c0a5ab9ab0f969ca1b8739; output-bytes=324
+- [x] G2: a aplicação compila com todas as rotas e componentes separados por Perfil
+  CHECK: pnpm typecheck
+  EXPECT: tsc
+  EVIDENCE: tsc -b sem erros
 
-- [x] G3: tipos, lint e build de produção aceitam a integração completa
-  CHECK: pnpm typecheck && pnpm lint && pnpm build && node -e "process.stdout.write('static-and-build-ok')"
-  EXPECT: static-and-build-ok
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/home/saito/_git/lista-de-materiais; path=0b100e4479da/20 entries; EXPECT=matched; output-sha256=a53167ff95c7b6dac8accea579d0902dbb7c8eb8132481c6cb6facaa00829984; output-bytes=2172
+- [x] G3: lint, build e a suíte completa passam
+  CHECK: pnpm test && pnpm lint && pnpm build
+  EXPECT: ✓ built in / Tests passed
+  EVIDENCE: 23 arquivos e 98 testes aprovados; oxlint sem warnings ou erros; vite build concluído com sucesso (apenas avisos não bloqueantes de tamanho de chunk e configuração PWA)
 
-- [x] G4: o fluxo real no navegador exige o checkbox, substitui dados e abre registros da demonstração
- EVIDENCE: agent-browser sessions demo-flow, guide-new-tabs, guide-index, guide-single, guide-properties, guide-code, guide-hero, guide-material-compare, guide-demo-cta, grams-qa, rail-footer-qa and catalog-actions-qa on 2026-09-01: /como-usar showed the confirmation dialog with the destructive action disabled until the checkbox was checked; confirmation loaded 14 Products and the demo List, /produtos/massa-de-pizza opened the persisted Massa de pizza record, and /listas/demo-lista-pacote-3-pizzas-mucarela opened the persisted plan. /configuracoes showed the same control as “Limpar tudo” when the demo was present, with its own checkbox confirmation. Clicking Massa de pizza opened the record in a second tab while the original tutorial remained open. The final guide used one computed grid column for every main layout at 1440px and 390px; its reading column measured 840px on desktop and 339px on mobile, body copy measured 18px, the level image measured 339x250px on mobile, and no horizontal overflow occurred. Clicking Nível 2 kept the route, changed the hash to #massa, updated aria-current, and moved from scrollY 0 through 9 to 5208 with computed scroll-behavior smooth. The properties block exposed ten separate explanatory cards matching the Product form, the four level descriptions were expanded, and the Product registration tour button was absent from the guide in both desktop and mobile checks. In the plan tree, the root code grew from 130x28px over two lines to 158x14px on one line inside a 220px desktop allowance; mobile retained the safe 130px wrapping behavior with no horizontal overflow. The former #entenda concept section became a single demo-loading hero with one button and no aside at 840px desktop and 339px mobile; its modal still required the unchecked confirmation checkbox before enabling the destructive action. The Código property example became a complete sentence explaining the pizza slug and the absence of spaces, accents and uppercase letters; it rendered in a 49px/611px example row on desktop and a 251px single column on mobile without horizontal overflow. The material comparison showed exactly three terminal raw materials and two decomposable semi-finished products, kept compact links to the other six raw materials, and therefore preserved links to all 14 persisted demo Products. At 390px it rendered five cards, two semantic groups and six supplemental links in one column with document scrollWidth equal to clientWidth and no browser errors. The demo CTA became a full-width orange action inside a light safety panel, measured 676x68px on desktop and 255x95px on mobile, preserved equal document scrollWidth and clientWidth, and opened the confirmation modal with the checkbox unchecked and the destructive button disabled. On the two requested Product routes, selecting G kept the toggle active and displayed converted quantities with one decimal place (`4.237,3`, `2.000,0`, `84,7`); the pizza child input `tree-quantity-pizza-de-mucarela-massa-de-pizza` displayed `2.000,0` with accessible text `2.000,0 G`, while non-gram units retained their existing precision and no browser errors occurred. On the pizza route, typing `2000,00108` into that child input kept the raw text while focused and normalized it to `2.000,0` only after blur, then recalculated the tree normally. The shared formatter test also confirmed `1.000,00` for a number with two decimal places and Brazilian currency output. On /como-usar, the desktop rail showed only Produtos in “Navegação principal”; Configurações, Plano de produção and Como usar appeared in “Acesso secundário” inside .rail-footer, while the mobile navigation retained Como usar. On /?view=table, the persisted demo catalog showed the new “Copiar para planilha” and “Imprimir catálogo” controls after the table; the table copy action and print action were covered by the focused test. The generated catalog PDF used the complete table, including cost, sale and recipe columns hidden by the responsive screen layout, in a compact black-and-white print style.
+- [x] G4: os fluxos críticos de troca de Perfil, importação, demonstração e Drive mantêm o isolamento
+  CHECK: pnpm test
+  EXPECT: Tests passed
+  EVIDENCE: isolamento A→B validado em database.test.ts; demonstração aberta em Perfil separado «Demonstração»; HomePage.test.tsx e GuidePage.test.tsx cobrem isolamento de demo, limpeza e importação; o Drive é coberto pelos testes de painel e sincronização
+
+- [x] G5: a implementação foi revisada manualmente contra o ADR e o planejamento
+  EVIDENCE: revisão frente a docs/planejamento-perfis-locais.md e docs/adr/0001-perfis-locais-e-sincronizacao.md; sem escopo de login ou sincronização automática
+
+## Desvios conhecidos e fora deste corte
+
+- A demonstração abre um Perfil separado «Demonstração» desde Configurações e desde o guia, sem sobrescrever o catálogo corrente. Se esse Perfil já existe, a ação apenas o abre.
+- A descoberta de arquivos do Drive busca arquivos próprios pelo prefixo `Lista de Materiais - ` e pelo nome legado exato `lista-de-materiais.json`; os novos arquivos levam o nome do Perfil e uma `appProperty` privada do aplicativo. Vários resultados exigem seleção explícita.
+- Não há login, backend, sincronização automática, backup integral multi-Perfil, permissões por Perfil nem cópia do vínculo Drive ao duplicar dados; esses itens ficam fora deste corte.

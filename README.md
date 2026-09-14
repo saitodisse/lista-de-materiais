@@ -68,33 +68,13 @@ Na ficha de Produto, a Receita é uma tabela com Tipo, Produto, Código e Quanti
 
 ## Dados locais e JSON
 
-Na tela inicial:
+Na tela de Configurações de cada Perfil:
 
-- **Exportar JSON** baixa uma cópia de Produtos, Receitas, Listas e entradas.
-- **Importar JSON** lê uma cópia desse formato, valida códigos, Receitas e referências e pede confirmação antes de substituir todos os dados locais em uma única transação.
-- **Adicionar demonstração** inclui a receita de pizzas de muçarela. Quando a demonstração está presente, o botão passa a **Limpar tudo** e remove Produtos, Listas e entradas após confirmação.
+- **Exportar JSON** baixa uma cópia de Produtos, Receitas, Listas e entradas **daquele Perfil**.
+- **Importar JSON** lê uma cópia desse formato, valida códigos, Receitas e referências e pede confirmação antes de substituir apenas o catálogo do Perfil de destino, em uma única transação. Os outros Perfis e o vínculo do Drive permanecem intactos.
+- **Abrir Perfil “Demonstração”** abre um Perfil local separado chamado `Demonstração` com a receita de pizzas de muçarela. Ele nunca muda o catálogo do Perfil atual. Se esse Perfil já existe, a ação apenas o abre. Dentro dele, **Limpar todos os dados** remove Produtos, Listas e entradas após confirmação.
 
-### Compartilhar pelo Google Drive
-
-Em Configurações, conecte a conta Google para criar um arquivo `lista-de-materiais.json`, encontrar um arquivo seu com esse nome ou colar o link/ID de um arquivo compartilhado. Links do Google Drive, IDs simples e links completos do aplicativo são aceitos. Vincular apenas consulta e valida a cópia remota. **Enviar dados** e **Receber dados** são ações separadas e pedem confirmação quando substituem conteúdo.
-
-O proprietário configura no próprio Google Drive se o arquivo será compartilhado com pessoas específicas ou com qualquer pessoa que tenha o link. Quem tiver permissão de edição poderá substituir a cópia completa. O endereço do PWA identifica o arquivo, mas não concede acesso nem funciona como senha.
-
-Para liberar o acesso por link, abra o arquivo no Drive e escolha **Compartilhar → Acesso geral → Qualquer pessoa com o link**, com o papel **Leitor** para receber ou **Editor** para receber e enviar dados. Para oferecer leitura geral e edição apenas a colaboradores, escolha Leitor no acesso geral e adicione os e-mails dos editores. Dois links para o mesmo arquivo não criam permissões independentes. Veja o [guia de compartilhamento e solução de erros](./docs/compartilhamento-google-drive.md), com os passos completos, o diagnóstico de arquivo privado e o teste com duas contas.
-
-A integração usa `drive`, `openid` e `email`, Google Identity Services e a API do Google Drive. O escopo amplo permite consultar um arquivo compartilhado por link ou ID e localizar os arquivos próprios com o nome padrão; o proprietário ainda controla o compartilhamento no Drive. O token fica somente em memória e é solicitado com `include_granted_scopes: false`, sem incorporar permissões concedidas por autorizações anteriores. Depois de uma autorização explícita, o aplicativo guarda apenas uma preferência local e tenta renovar a sessão silenciosamente após F5; se a sessão não tiver o escopo necessário, uma nova autorização será solicitada. Para ativar a integração no build, configure somente `VITE_GOOGLE_CLIENT_ID` no ambiente Vite, habilite a Drive API no Google Cloud e registre a origem autorizada.
-
-Uma conta que autorizou a versão anterior com `drive.file` precisará conceder o escopo `drive` quando a sessão for renovada. Alterar o Console não revoga autorizações antigas. Se você recebeu um link de outra pessoa, conecte a conta que tem acesso ao arquivo, cole o link completo (incluindo `resourcekey` quando existir) e vincule-o; o vínculo preserva a referência de sincronização. O aplicativo não solicita `userinfo.profile`, pois usa somente o e-mail para identificar a conta conectada.
-
-O escopo `drive` é classificado pelo Google como restrito. A publicação desta alteração não equivale à aprovação do aplicativo: mantenha a declaração no Google Cloud, a Política de Privacidade e o processo de verificação alinhados antes de disponibilizar a integração amplamente. Consulte a [documentação de autorização da Drive API](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) para os requisitos atuais.
-
-Para o consentimento OAuth, use `https://lista-de-materiais.com.br/sobre-o-aplicativo` como página inicial e `https://lista-de-materiais.com.br/politica-de-privacidade` como Política de Privacidade. A página identifica o aplicativo, explica Produtos, Receitas, Listas e a finalidade da autorização Google Drive sem exigir login. Verifique `lista-de-materiais.com.br` no Search Console com uma conta que seja Owner/Editor do projeto Google Cloud e cadastre o mesmo domínio no consentimento. O alias `listademateriais.vercel.app` permanece disponível para compatibilidade, mas não é a propriedade usada na verificação OAuth.
-
-Depois de configurar o compartilhamento no Google Drive, clique em **Verificar alterações** e copie o link do aplicativo novamente. Se o Drive exigir uma chave de recurso, o link precisa carregar `resourcekey`; o aplicativo preserva essa chave quando ela é fornecida pelo Drive ou pelo link colado.
-
-Quando duas cópias divergem, o aplicativo oferece receber do Drive, substituir o Drive ou cancelar. A atualização envia `If-Match` quando o Drive retorna uma ETag; uma resposta `412` exige nova consulta. Sem uma precondição aceita pelo serviço, dois envios simultâneos ainda podem se sobrescrever.
-
-Mantenha uma exportação antes de usar importação, limpeza ou recebimento do Drive. Exportar, importar e limpar permanecem locais; o envio ao Drive só ocorre quando você escolhe explicitamente essa ação.
+O banco local pode conter vários **Perfis** isolados. Cada Perfil tem o seu próprio catálogo, suas Listas, o estado de demonstração e o seu vínculo do Google Drive. Códigos de Produto e IDs de Lista se podem repetir em Perfis diferentes. Trocar de Perfil na barra do aplicativo abre a coleção de Produtos daquele Perfil.
 
 ## Offline não é conectividade
 
@@ -112,6 +92,8 @@ Isso não cria conexão real nem sincronização. O aviso “Dados neste aparelh
 ## Estrutura e documentação
 
 - [CONTEXT.md](./CONTEXT.md) contém o vocabulário canônico do domínio.
+- [Planejamento de Perfis locais](./docs/planejamento-perfis-locais.md) registra o modelo aprovado, a migração e os critérios de aceitação para múltiplos Perfis.
+- [ADR 0001](./docs/adr/0001-perfis-locais-e-sincronizacao.md) registra a decisão arquitetural de isolamento por Perfil e sincronização separada.
 - [AGENTS.md](./AGENTS.md) descreve limites do produto, persistência, PWA e regras de desenvolvimento.
 - `src/domain` mantém contratos e validações; `src/db` mantém Dexie e transações; `src/features` contém as telas de Produtos, Listas e resultado BOM.
 - `src/service-worker.ts` define a estratégia Workbox usada pelo build PWA.

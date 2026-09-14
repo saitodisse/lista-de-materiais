@@ -28,6 +28,7 @@ function selectQuantityInput(input: HTMLInputElement): void {
 }
 
 interface TreeRowsProps {
+  profileId: string
   node: ITreeNode
   expansion: ProductTreeExpansion
   showCost: boolean
@@ -37,7 +38,7 @@ interface TreeRowsProps {
   onQuantityCommit: (node: ITreeNode) => void
 }
 
-function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, onQuantityCommit }: TreeRowsProps) {
+function TreeRows({ profileId, node, expansion, unit, drafts, onQuantityChange, onQuantityCommit, showCost }: TreeRowsProps) {
   const children = Object.values(node.children ?? {})
   const visibleChildren = expansion === 'full' || node.level === 0
   const fieldId = inputId(node.path)
@@ -46,7 +47,7 @@ function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, o
   return <>
     <tr>
       <td className="product-tree-name" style={{ '--tree-depth': node.level } as CSSProperties}>
-        <Link to="/produtos/$productCode" params={{ productCode: node.id }}>{node.name}</Link>
+        <Link to="/perfis/$profileId/produtos/$productCode" params={{ profileId, productCode: node.id }}>{node.name}</Link>
         <code>{node.id}</code>
       </td>
       <td className="product-tree-quantity">
@@ -90,11 +91,11 @@ function TreeRows({ node, expansion, showCost, unit, drafts, onQuantityChange, o
       </td>
       {showCost && <td className="product-tree-cost">{node.calculatedCost === null ? '—' : formatCurrency(node.calculatedCost)}</td>}
     </tr>
-    {visibleChildren && children.map((child) => <TreeRows key={child.path} node={child} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={onQuantityChange} onQuantityCommit={onQuantityCommit} />)}
+    {visibleChildren && children.map((child) => <TreeRows key={child.path} profileId={profileId} node={child} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={onQuantityChange} onQuantityCommit={onQuantityCommit} />)}
   </>
 }
 
-export function ProductBomTree({ productCode, products }: { productCode: string; products: ProductRecord[] }) {
+export function ProductBomTree({ productCode, products, profileId }: { productCode: string; products: ProductRecord[]; profileId: string }) {
   const { multiplier, setMultiplier, showCost, setShowCost, unit, setUnit, expansion, setExpansion } = useProductTreeOptions()
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
@@ -179,11 +180,11 @@ export function ProductBomTree({ productCode, products }: { productCode: string;
       <div className="product-tree-table-wrap" data-guide="bom-tree-table">
         <table className="product-tree-table" data-show-cost={showCost} aria-label="Árvore calculada da Receita">
           <thead><tr><th scope="col">Produto</th><th scope="col">Quantidade</th>{showCost && <th scope="col">Custo</th>}</tr></thead>
-          <tbody><TreeRows node={calculation.tree} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={changeQuantity} onQuantityCommit={commitQuantity} /></tbody>
+          <tbody><TreeRows profileId={profileId} node={calculation.tree} expansion={expansion} showCost={showCost} unit={unit} drafts={drafts} onQuantityChange={changeQuantity} onQuantityCommit={commitQuantity} /></tbody>
         </table>
       </div>
       <div className="product-tree-actions">
-        <Link to="/produtos/$productCode/imprimir" params={{ productCode }} search={{ multiplier, cost: showCost, unit, tree: expansion }} target="_blank" rel="noopener noreferrer" className="button secondary"><Printer size={17} /> Imprimir receita</Link>
+        <Link to="/perfis/$profileId/produtos/$productCode/imprimir" params={{ profileId, productCode }} search={{ multiplier, cost: showCost, unit, tree: expansion }} target="_blank" rel="noopener noreferrer" className="button secondary"><Printer size={17} /> Imprimir receita</Link>
         <button type="button" className="button secondary" onClick={() => void copySpreadsheet()}><ClipboardCopy size={17} /> Copiar para planilha</button>
       </div>
       {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite">{copyFeedback}</p>}

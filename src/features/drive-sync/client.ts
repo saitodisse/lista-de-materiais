@@ -92,12 +92,19 @@ function mapMetadata(value: Partial<DriveFileMetadata>): DriveFileMetadata {
 }
 
 const DEFAULT_DRIVE_FILE_NAME = 'lista-de-materiais.json'
+const DRIVE_PROFILE_FILE_PREFIX = 'Lista de Materiais - '
+const DRIVE_APP_PROPERTY_KEY = 'appName'
+const DRIVE_APP_PROPERTY_VALUE = 'lista-de-materiais'
+
+function driveFileName(profileName?: string): string {
+  return profileName ? `${DRIVE_PROFILE_FILE_PREFIX}${profileName.trim()}.json` : DEFAULT_DRIVE_FILE_NAME
+}
 
 export async function listDriveJsonFiles(token: string): Promise<DriveFileMetadata[]> {
   const files: DriveFileMetadata[] = []
   let pageToken: string | undefined
   const query = [
-    `name = '${DEFAULT_DRIVE_FILE_NAME}'`,
+    `(name contains '${DRIVE_PROFILE_FILE_PREFIX}' or name = '${DEFAULT_DRIVE_FILE_NAME}')`,
     'trashed = false',
     "'me' in owners",
   ].join(' and ')
@@ -173,7 +180,7 @@ function multipartBody(metadata: Record<string, string>, json: string, boundary:
   ].join('\r\n')
 }
 
-export async function createDriveJsonFile(token: string, data: LocalDataExport): Promise<{ metadata: DriveFileMetadata; etag: string | null }> {
+export async function createDriveJsonFile(token: string, data: LocalDataExport, profileName?: string): Promise<{ metadata: DriveFileMetadata; etag: string | null }> {
   const boundary = `listaMateriais${Date.now().toString(36)}`
   const { value, response } = await requestJson<DriveFileMetadata>(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=${encodeURIComponent(fields())}`, {
     method: 'POST',
@@ -181,7 +188,7 @@ export async function createDriveJsonFile(token: string, data: LocalDataExport):
       Authorization: `Bearer ${token}`,
       'Content-Type': `multipart/related; boundary=${boundary}`,
     },
-    body: multipartBody({ name: 'lista-de-materiais.json', mimeType: 'application/json' }, JSON.stringify(data), boundary),
+    body: multipartBody({ name: driveFileName(profileName), mimeType: 'application/json', appProperties: JSON.stringify({ [DRIVE_APP_PROPERTY_KEY]: DRIVE_APP_PROPERTY_VALUE }) }, JSON.stringify(data), boundary),
   })
   return { metadata: mapMetadata(value), etag: response.headers.get('etag') }
 }

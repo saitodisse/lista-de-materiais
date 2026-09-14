@@ -28,12 +28,12 @@ const massa: ProductRecord = {
 function renderProductsRoute(initialEntry: string, onUrlUpdate?: OnUrlUpdateFunction) {
   const searchParams = new URL(initialEntry, 'https://lista.local').search
   const rootRoute = createRootRoute({ component: () => <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}><Outlet /></NuqsTestingAdapter> })
-  const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos', component: ProductsPage })
-  const productRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode', component: ProductDetailPage })
-  const editProductRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode/editar', component: ProductEditorPage })
-  const printRoute = createRoute({ getParentRoute: () => rootRoute, path: '/produtos/$productCode/imprimir', component: ProductPrintPage })
-  const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas', component: () => null })
-  const listRoute = createRoute({ getParentRoute: () => rootRoute, path: '/listas/$listId', component: () => null })
+  const productsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/produtos', component: ProductsPage })
+  const productRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/produtos/$productCode', component: ProductDetailPage })
+  const editProductRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/produtos/$productCode/editar', component: ProductEditorPage })
+  const printRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/produtos/$productCode/imprimir', component: ProductPrintPage })
+  const listsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/listas', component: () => null })
+  const listRoute = createRoute({ getParentRoute: () => rootRoute, path: '/perfis/$profileId/listas/$listId', component: () => null })
   const router = createRouter({
     routeTree: rootRoute.addChildren([productsRoute, productRoute, editProductRoute, printRoute, listsRoute, listRoute]),
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
@@ -56,7 +56,7 @@ describe('consulta de Produtos', () => {
 
   it('abre em tabela e alterna entre tabela e cartões sem alterar o catálogo', async () => {
     const user = userEvent.setup()
-    renderProductsRoute('/produtos')
+    renderProductsRoute('/perfis/principal/produtos')
 
     expect(await screen.findByRole('heading', { name: 'Produtos' })).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Produtos cadastrados' })).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('consulta de Produtos', () => {
 
   it('substitui as categorias de limpeza por Outros no filtro e na tabela', async () => {
     await db.products.add({ ...massa, id: 'outro', productCode: 'outro', name: 'Outro material', category: 'c' })
-    renderProductsRoute('/produtos?view=table')
+    renderProductsRoute('/perfis/principal/produtos?view=table')
 
     expect(await screen.findByRole('button', { name: 'Outros' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Limpeza' })).not.toBeInTheDocument()
@@ -118,7 +118,7 @@ describe('consulta de Produtos', () => {
       purchaseQuoteValue: null,
       recipe: [{ id: massa.productCode, quantity: 2 }],
     })
-    renderProductsRoute('/produtos?view=table')
+    renderProductsRoute('/perfis/principal/produtos?view=table')
 
     const row = (await screen.findByRole('link', { name: 'Pizza integral' })).closest('tr')!
     expect(row.querySelector('[data-column="purchase-cost"]')).toHaveTextContent(/R\$\s*9,00/)
@@ -128,7 +128,7 @@ describe('consulta de Produtos', () => {
     const user = userEvent.setup()
     const urlUpdates: string[] = []
     window.localStorage.setItem('lista-de-materiais:products-view', 'table')
-    renderProductsRoute('/produtos', (event) => urlUpdates.push(event.queryString))
+    renderProductsRoute('/perfis/principal/produtos', (event) => urlUpdates.push(event.queryString))
 
     expect(await screen.findByRole('table', { name: 'Produtos cadastrados' })).toBeInTheDocument()
     expect(window.localStorage.getItem('lista-de-materiais:products-view')).toBe('table')
@@ -145,7 +145,7 @@ describe('consulta de Produtos', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     const print = vi.spyOn(window, 'print').mockImplementation(() => {})
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    renderProductsRoute('/produtos?view=table')
+    renderProductsRoute('/perfis/principal/produtos?view=table')
 
     await screen.findByRole('table', { name: 'Produtos cadastrados' })
     await user.click(screen.getByRole('button', { name: 'Copiar para planilha' }))
@@ -166,7 +166,7 @@ describe('consulta de Produtos', () => {
       { ...massa, id: 'pao-integral', productCode: 'pao-integral', name: 'Pão integral', category: 'p', unit: 'UN' },
       { ...massa, id: 'agua-filtrada', productCode: 'agua-filtrada', name: 'Água filtrada', category: 'm', unit: 'L' },
     ])
-    renderProductsRoute('/produtos?view=cards&search=agua-filtrada&categories=m', (event) => urlUpdates.push(event.searchParams))
+    renderProductsRoute('/perfis/principal/produtos?view=cards&search=agua-filtrada&categories=m', (event) => urlUpdates.push(event.searchParams))
 
     expect(await screen.findByRole('heading', { name: 'Água filtrada' })).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Buscar por nome ou código' })).toHaveValue('agua-filtrada')
@@ -196,7 +196,7 @@ describe('consulta de Produtos', () => {
   })
 
   it('mantém o aviso de exclusão fora das ações da ficha', async () => {
-    renderProductsRoute('/produtos/massa-integral')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral')
 
     expect(await screen.findByRole('heading', { name: 'Massa integral' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Abrir ajuda desta tela' })).toBeInTheDocument()
@@ -215,13 +215,13 @@ describe('consulta de Produtos', () => {
 
   it('formata o peso da ficha no padrão brasileiro', async () => {
     await db.products.put({ ...massa, weight: 1000.5 })
-    renderProductsRoute('/produtos/massa-integral')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral')
 
     expect(await screen.findByText('1.000,5 kg por unidade')).toBeInTheDocument()
   })
 
   it('apresenta o tour e os alvos na edição de um Produto', async () => {
-    renderProductsRoute('/produtos/massa-integral/editar')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral/editar')
 
     expect(await screen.findByRole('heading', { name: 'Editar Massa integral' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Abrir ajuda desta tela' })).toBeInTheDocument()
@@ -236,12 +236,12 @@ describe('consulta de Produtos', () => {
     await db.products.add({ ...massa, id: 'pao-integral', productCode: 'pao-integral', name: 'Pão integral', category: 'p', recipe: [{ id: massa.productCode, quantity: 1 }] })
     await db.materialLists.add({ id: 'lista-compras', name: 'Compras da semana', createdAt: massa.createdAt, updatedAt: massa.updatedAt })
     await db.materialListEntries.add({ listId: 'lista-compras', productCode: massa.productCode, quantity: 2 })
-    renderProductsRoute('/produtos/massa-integral')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral')
 
     const warning = await screen.findByRole('heading', { name: 'Remover Produto' })
     const dangerZone = warning.closest('section')!
-    expect(within(dangerZone).getByRole('link', { name: 'Pão integral' })).toHaveAttribute('href', '/produtos/pao-integral')
-    expect(within(dangerZone).getByRole('link', { name: 'Compras da semana' })).toHaveAttribute('href', '/listas/lista-compras')
+    expect(within(dangerZone).getByRole('link', { name: 'Pão integral' })).toHaveAttribute('href', '/perfis/principal/produtos/pao-integral')
+    expect(within(dangerZone).getByRole('link', { name: 'Compras da semana' })).toHaveAttribute('href', '/perfis/principal/listas/lista-compras')
     expect(screen.getByRole('button', { name: 'Excluir' })).toBeDisabled()
   })
 
@@ -251,7 +251,7 @@ describe('consulta de Produtos', () => {
       notes: 'Use farinha peneirada.\nMantenha a embalagem fechada.',
       preparation: 'Misture os ingredientes.\nAsse até dourar.',
     })
-    renderProductsRoute('/produtos/massa-integral')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral')
 
     const notes = await screen.findByText((_, element) => element?.tagName === 'PRE' && element.textContent === 'Use farinha peneirada.\nMantenha a embalagem fechada.')
     const preparation = screen.getByText((_, element) => element?.tagName === 'PRE' && element.textContent === 'Misture os ingredientes.\nAsse até dourar.')
@@ -274,7 +274,7 @@ describe('consulta de Produtos', () => {
       purchaseQuoteValue: null,
       recipe: [{ id: massa.productCode, quantity: 2 }],
     })
-    renderProductsRoute('/produtos/pizza-de-mucarela')
+    renderProductsRoute('/perfis/principal/produtos/pizza-de-mucarela')
 
     const table = await screen.findByRole('table', { name: 'Árvore calculada da Receita' })
 
@@ -344,7 +344,7 @@ describe('consulta de Produtos', () => {
         recipe: [{ id: 'massa-de-pizza', quantity: 0.508 }],
       },
     ])
-    renderProductsRoute('/produtos/pizza-de-mucarela?multiplier=3.93701&unit=g')
+    renderProductsRoute('/perfis/principal/produtos/pizza-de-mucarela?multiplier=3.93701&unit=g')
 
     await screen.findByRole('table', { name: 'Árvore calculada da Receita' })
     const massInput = document.querySelector<HTMLInputElement>('#tree-quantity-pizza-de-mucarela-massa-de-pizza')
@@ -366,7 +366,7 @@ describe('consulta de Produtos', () => {
     await db.products.add({ ...massa, id: 'farinha', productCode: 'farinha', name: 'Farinha', category: 'm', unit: 'KG', purchaseQuoteValue: 4 })
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    renderProductsRoute('/produtos/massa-integral')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral')
 
     await screen.findByRole('table', { name: 'Árvore calculada da Receita' })
     await user.click(screen.getByRole('button', { name: 'Copiar para planilha' }))
@@ -379,7 +379,7 @@ describe('consulta de Produtos', () => {
   it('prepara a rota de impressão com o multiplicador recebido pela URL', async () => {
     await db.products.put({ ...massa, recipe: [{ id: 'farinha', quantity: 0.5 }], purchaseQuoteValue: null })
     await db.products.add({ ...massa, id: 'farinha', productCode: 'farinha', name: 'Farinha', category: 'm', unit: 'KG', purchaseQuoteValue: 4 })
-    renderProductsRoute('/produtos/massa-integral/imprimir?multiplier=2')
+    renderProductsRoute('/perfis/principal/produtos/massa-integral/imprimir?multiplier=2')
 
     const table = await screen.findByRole('table', { name: 'Receita de Massa integral' })
     expect(screen.getByRole('heading', { name: 'Massa integral' })).toBeInTheDocument()

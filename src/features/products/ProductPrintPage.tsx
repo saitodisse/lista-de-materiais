@@ -4,7 +4,7 @@ import type { ITreeNode } from '@saitodisse/bom-recipe-calculator'
 import { Link, useParams } from '@tanstack/react-router'
 import { ErrorNotice } from '../../components/Page'
 import { categoryName, formatCurrency } from '../../components/format'
-import { db } from '../../db/database'
+import { getProduct, listProducts } from '../../db/database'
 import { calculateProductTree } from '../bom/calculator'
 import { displayProductTreeQuantity, flattenProductTree, formatProductTreeQuantity, type ProductTreeExpansion, type ProductTreeUnit } from '../bom/productTree'
 import { useProductTreeOptions } from '../bom/useProductTreeOptions'
@@ -24,9 +24,9 @@ function PrintTreeRows({ tree, expansion, showCost, unit }: { tree: ITreeNode; e
 }
 
 export function ProductPrintPage() {
-  const { productCode } = useParams({ strict: false }) as { productCode: string }
+  const { profileId, productCode } = useParams({ strict: false }) as { profileId: string; productCode: string }
   const { multiplier, showCost, setShowCost, unit, setUnit, expansion, setExpansion } = useProductTreeOptions()
-  const data = useLiveQuery(async () => ({ product: await db.products.get(productCode), products: await db.products.toArray() }), [productCode])
+  const data = useLiveQuery(async () => ({ product: await getProduct(productCode, profileId), products: await listProducts(profileId) }), [productCode, profileId])
   const calculation = useMemo(() => {
     if (!data?.product) return null
     try { return { tree: calculateProductTree(data.products, productCode, multiplier), error: null } }
@@ -34,13 +34,13 @@ export function ProductPrintPage() {
   }, [data, multiplier, productCode])
 
   if (!data || !calculation) return <p className="loading-state">Preparando a receita para impressão…</p>
-  if (!data.product) return <div className="page"><ErrorNotice>Esse Produto não existe neste aparelho.</ErrorNotice><Link to="/" className="button secondary">Voltar aos Produtos</Link></div>
-  if (calculation.error || !calculation.tree) return <div className="page"><ErrorNotice>{calculation.error ?? 'Não foi possível calcular esta receita.'}</ErrorNotice><Link to="/produtos/$productCode" params={{ productCode }} className="button secondary">Voltar à ficha</Link></div>
+  if (!data.product) return <div className="page"><ErrorNotice>Esse Produto não existe neste Perfil local.</ErrorNotice><Link to="/perfis/$profileId/produtos" params={{ profileId }} className="button secondary">Voltar aos Produtos</Link></div>
+  if (calculation.error || !calculation.tree) return <div className="page"><ErrorNotice>{calculation.error ?? 'Não foi possível calcular esta receita.'}</ErrorNotice><Link to="/perfis/$profileId/produtos/$productCode" params={{ profileId, productCode }} className="button secondary">Voltar à ficha</Link></div>
 
   const { product } = data
   const displayRootQuantity = displayProductTreeQuantity(calculation.tree, unit)
   return <div className="page print-page">
-    <div className="print-toolbar"><Link to="/produtos/$productCode" params={{ productCode }} search={{ multiplier, cost: showCost, unit, tree: expansion }} className="button secondary">Voltar à ficha</Link><button type="button" className="button primary" onClick={() => window.print()}>Imprimir</button></div>
+    <div className="print-toolbar"><Link to="/perfis/$profileId/produtos/$productCode" params={{ profileId, productCode }} search={{ multiplier, cost: showCost, unit, tree: expansion }} className="button secondary">Voltar à ficha</Link><button type="button" className="button primary" onClick={() => window.print()}>Imprimir</button></div>
     <header className="print-header"><p className="eyebrow">receita</p><h1>{product.name}</h1><p>{categoryName(product.category)} · {formatProductTreeQuantity(displayRootQuantity.value, displayRootQuantity.unit)} {displayRootQuantity.unit} · multiplicador {formatProductTreeQuantity(multiplier)}</p></header>
     <div className="print-options" role="group" aria-label="Opções da impressão">
       <button type="button" className="button quiet" aria-pressed={showCost} onClick={() => setShowCost(!showCost)}>Exibir custo</button>
