@@ -8,7 +8,7 @@ import { describeDriveApiError, DriveApiError } from './client'
 import { parseDriveReference } from './links'
 import { attachDriveMetadata, attachDriveFile, connectAndGetAccount, createDriveShare, disconnectDriveShare, findMyDriveFiles, getDriveAppLink, receiveDriveShare, refreshDriveShare, sendDriveShare, DriveSyncConflictError, LocalChangedDuringSyncError, type SyncDecision } from './sync'
 import type { DriveFileMetadata } from './client'
-import { getDriveSync } from '../../db/database'
+import { clearGoogleProfile, getDriveSync, getGoogleProfile } from '../../db/database'
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return 'ainda não consultado'
@@ -86,9 +86,12 @@ function DriveFileChoices({ files, onSelect, onClose, busy }: { files: DriveFile
 
 export function DriveSyncPanel({ profileId }: { profileId?: string } = {}) {
   const record = useLiveQuery(() => getDriveSync(profileId), [profileId])
-  const [connected, setConnected] = useState(isGoogleConnected())
-  const [restoring, setRestoring] = useState(() => !isGoogleConnected() && hasGoogleConnectionPreference())
+  const remembered = useLiveQuery(async () => ({ account: await getGoogleProfile(profileId), driveAccountEmail: (await getDriveSync(profileId))?.accountEmail ?? null }), [profileId])
+  const profileKey = profileId ?? 'default'
+  const [connected, setConnected] = useState(() => isGoogleConnected(profileId))
+  const [restoring, setRestoring] = useState(false)
   const [accountEmail, setAccountEmail] = useState<string | null>(null)
+  const restoreAttemptedFor = useRef<string | null>(null)
   const [reference, setReference] = useState(initialDriveReference)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -98,26 +101,40 @@ export function DriveSyncPanel({ profileId }: { profileId?: string } = {}) {
   const [foundFiles, setFoundFiles] = useState<DriveFileMetadata[] | null>(null)
   const [copied, setCopied] = useState(false)
 
+  const rememberedEmail = remembered?.account?.email ?? remembered?.driveAccountEmail ?? null
+
   useEffect(() => {
-    if (!restoring) return
+    if (!remembered || restoreAttemptedFor.current === profileKey) return
+    restoreAttemptedFor.current = profileKey
+    if (isGoogleConnected(profileId)) {
+      return
+    }
+    const canRestore = Boolean(remembered.account || remembered.driveAccountEmail || hasGoogleConnectionPreference(profileId))
+    if (!canRestore) return
     let active = true
-    void restoreGoogleDrive()
-      .then((token) => getGoogleAccountEmail(token))
-      .then((email) => {
+    void Promise.resolve()
+      .then(async () => {
+        if (!active) return null
+        setRestoring(true)
+        const token = await restoreGoogleDrive(profileId)
+        return { email: await getGoogleAccountEmail(token, profileId) }
+      })
+      .then((result) => {
+        if (!result) return
         if (!active) return
         setConnected(true)
-        setAccountEmail(email)
+        setAccountEmail(result.email ?? rememberedEmail)
       })
       .catch(() => {
         if (!active) return
         setConnected(false)
-        setAccountEmail(null)
+        setAccountEmail(rememberedEmail)
       })
       .finally(() => {
         if (active) setRestoring(false)
       })
     return () => { active = false }
-  }, [restoring])
+  }, [remembered, profileId, profileKey, rememberedEmail])
 
   const run = async (name: string, operation: () => Promise<void>) => {
     setBusy(name)
@@ -132,7 +149,7 @@ export function DriveSyncPanel({ profileId }: { profileId?: string } = {}) {
   }
 
   const connect = () => void run('connect', async () => {
-    const email = await connectAndGetAccount()
+    const email = await connectAndGetAccount(profileId)
     setConnected(true)
     setRestoring(false)
     setAccountEmail(email)
@@ -219,13 +236,14 @@ export function DriveSyncPanel({ profileId }: { profileId?: string } = {}) {
     setSuccess('O vínculo foi removido deste aparelho. O arquivo do Drive permanece intacto.')
   })
 
-  const disconnectAccount = () => {
-    disconnectGoogleDrive()
+  const disconnectAccount = () => void run('disconnect-account', async () => {
+    disconnectGoogleDrive(profileId)
+    await clearGoogleProfile(profileId)
     setConnected(false)
     setRestoring(false)
     setAccountEmail(null)
-    setSuccess('A sessão Google foi encerrada neste aparelho.')
-  }
+    setSuccess('A sessão Google foi encerrada neste Perfil neste aparelho.')
+  })
 
   return <section className="detail-card drive-sync-panel" aria-label="Sincronização manual com Google Drive">
     <div className="section-heading">
@@ -233,11 +251,13 @@ export function DriveSyncPanel({ profileId }: { profileId?: string } = {}) {
       <h2>Sincronizar com Google Drive</h2>
       <p>O catálogo continua neste aparelho. O Drive guarda uma cópia JSON que só é lida ou substituída quando você pede.</p>
       <p>O acesso ao Drive permite abrir arquivos compartilhados e localizar seus arquivos padrão, sempre por uma ação manual sua.</p>
+      <p>A conta autorizada é lembrada neste Perfil para tentar uma reconexão silenciosa quando você voltar a esta tela. O token e os cookies do Google não são guardados pelo aplicativo.</p>
     </div>
     <div className="drive-sync-warning"><strong>Compartilhamento do Drive controla o acesso.</strong> Quem puder editar o arquivo poderá substituir todos os Produtos, Receitas e Listas. O link não é uma senha nem uma forma de criptografia.</div>
     <div className="drive-sync-toolbar">
       <button type="button" className="button secondary" onClick={connect} disabled={busy !== null || restoring}><Cloud size={17} /> {restoring ? 'Reconectando Google…' : connected ? 'Reconectar Google' : 'Conectar Google'}</button>
-      {connected && <><span className="drive-account">{accountEmail ?? 'conta conectada nesta sessão'}</span><button type="button" className="button quiet" onClick={disconnectAccount} disabled={busy !== null}>Desconectar conta</button></>}
+      {connected && <><span className="drive-account">{accountEmail ?? rememberedEmail ?? 'conta conectada nesta sessão'}</span><button type="button" className="button quiet" onClick={disconnectAccount} disabled={busy !== null}>Desconectar conta</button></>}
+      {!connected && !restoring && rememberedEmail && <span className="drive-account">Última conta lembrada neste Perfil: {rememberedEmail}</span>}
     </div>
     <div className="drive-sync-create">
       <div><strong>Começar um compartilhamento</strong><p>Cria um arquivo `lista-de-materiais.json` no seu Drive com os dados atuais.</p></div>

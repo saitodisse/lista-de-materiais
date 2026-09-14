@@ -2,6 +2,18 @@
 
 Todas as mudanças relevantes deste projeto são registradas neste arquivo.
 
+## 0.9.0 — 2026-09-14
+
+### Added
+
+- A identidade Google agora fica lembrada separadamente em cada Perfil local, permitindo tentar restaurar silenciosamente a conexão ao reabrir a sincronização.
+- A tela de sincronização informa a última conta lembrada e protege a identidade salva contra a reutilização acidental em outro Perfil.
+
+### Changed
+
+- Tokens OAuth e cookies continuam fora do banco e da aplicação; a restauração depende da sessão Google mantida pelo navegador.
+- Desconectar ou excluir um Perfil remove a identidade Google correspondente, e a Política de Privacidade descreve esse armazenamento mínimo.
+
 ## 0.8.0 — 2026-09-14
 
 ### Added

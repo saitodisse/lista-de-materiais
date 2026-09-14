@@ -99,9 +99,9 @@ function recordAfterDownload(previous: DriveSyncRecord, remote: DriveRemoteFile)
   }
 }
 
-async function tokenAndAccount(): Promise<{ token: string; accountEmail: string | null }> {
-  const token = getGoogleAccessToken()
-  return { token, accountEmail: await getGoogleAccountEmail(token) }
+async function tokenAndAccount(profileId?: string): Promise<{ token: string; accountEmail: string | null }> {
+  const token = getGoogleAccessToken(profileId)
+  return { token, accountEmail: await getGoogleAccountEmail(token, profileId) }
 }
 
 async function assertLocalFingerprint(expected: string, profileId?: string): Promise<LocalDataExport> {
@@ -110,13 +110,13 @@ async function assertLocalFingerprint(expected: string, profileId?: string): Pro
   return current
 }
 
-export async function connectAndGetAccount(): Promise<string | null> {
-  const token = await connectGoogleDrive()
-  return getGoogleAccountEmail(token)
+export async function connectAndGetAccount(profileId?: string): Promise<string | null> {
+  const token = await connectGoogleDrive(profileId)
+  return getGoogleAccountEmail(token, profileId)
 }
 
 export async function createDriveShare(profileId?: string): Promise<{ record: DriveSyncRecord; link: string }> {
-  const { token, accountEmail } = await tokenAndAccount()
+  const { token, accountEmail } = await tokenAndAccount(profileId)
   const local = await exportLocalData(profileId)
   const fingerprint = fingerprintLocalData(local)
   const profile = profileId ? await getProfile(profileId) : undefined
@@ -129,7 +129,7 @@ export async function createDriveShare(profileId?: string): Promise<{ record: Dr
 }
 
 export async function attachDriveFile(reference: DriveFileReference, profileId?: string): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile }> {
-  const { token, accountEmail } = await tokenAndAccount()
+  const { token, accountEmail } = await tokenAndAccount(profileId)
   const remote = await downloadDriveJson(token, reference.fileId, reference.resourceKey)
   const previous = await getDriveSync(profileId)
   const record = recordFromRemote(reference, remote, previous?.fileId === reference.fileId ? previous : undefined, accountEmail)
@@ -137,8 +137,8 @@ export async function attachDriveFile(reference: DriveFileReference, profileId?:
   return { record, remote }
 }
 
-export async function findMyDriveFiles(_profileId?: string): Promise<DriveFileMetadata[]> {
-  const { token } = await tokenAndAccount()
+export async function findMyDriveFiles(profileId?: string): Promise<DriveFileMetadata[]> {
+  const { token } = await tokenAndAccount(profileId)
   return listDriveJsonFiles(token)
 }
 
@@ -161,7 +161,7 @@ export async function findAndAttachMyDriveFile(profileId?: string): Promise<{ ma
 export async function refreshDriveShare(profileId?: string): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile }> {
   const current = await getDriveSync(profileId)
   if (!current) throw new Error('Nenhum arquivo do Drive está vinculado neste aparelho.')
-  const { token, accountEmail } = await tokenAndAccount()
+  const { token, accountEmail } = await tokenAndAccount(profileId)
   const remote = await downloadDriveJson(token, current.fileId, current.resourceKey)
   const record = recordFromRemote({ fileId: current.fileId, resourceKey: current.resourceKey }, remote, current, accountEmail)
   await saveDriveSync(record, profileId)
@@ -178,7 +178,7 @@ async function applyRemoteSnapshot(current: DriveSyncRecord, remote: DriveRemote
 export async function receiveDriveShare(expectedLocalFingerprint?: string, profileId?: string): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile }> {
   const current = await getDriveSync(profileId)
   if (!current) throw new Error('Nenhum arquivo do Drive está vinculado neste aparelho.')
-  const { token } = await tokenAndAccount()
+  const { token } = await tokenAndAccount(profileId)
   const local = await exportLocalData(profileId)
   const localFingerprint = fingerprintLocalData(local)
   if (expectedLocalFingerprint && localFingerprint !== expectedLocalFingerprint) throw new LocalChangedDuringSyncError()
@@ -191,7 +191,7 @@ export async function receiveDriveShare(expectedLocalFingerprint?: string, profi
 export async function sendDriveShare(decision?: SyncDecision, profileId?: string): Promise<{ record: DriveSyncRecord; remote: DriveRemoteFile | null; uploaded: boolean }> {
   const current = await getDriveSync(profileId)
   if (!current) throw new Error('Nenhum arquivo do Drive está vinculado neste aparelho.')
-  const { token, accountEmail } = await tokenAndAccount()
+  const { token, accountEmail } = await tokenAndAccount(profileId)
   const local = await exportLocalData(profileId)
   const localFingerprint = fingerprintLocalData(local)
   const remote = await downloadDriveJson(token, current.fileId, current.resourceKey)

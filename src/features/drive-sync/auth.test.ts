@@ -1,20 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getGoogleProfile, resetDatabaseForTest, saveGoogleProfile } from '../../db/database'
 import { connectGoogleDrive, disconnectGoogleDrive, hasGoogleConnectionPreference, restoreGoogleDrive, GOOGLE_CONNECTION_PREFERENCE_KEY, GOOGLE_DRIVE_SCOPE, GoogleDriveScopeError } from './auth'
 
 function installGoogleIdentity(responses: Array<{ access_token?: string; expires_in?: number; scope?: string }> = []) {
   const requests: Array<{ prompt?: string }> = []
-  const initTokenClient = vi.fn((options: { callback: (response: { access_token?: string; expires_in?: number }) => void }) => ({
-    requestAccessToken: vi.fn((config?: { prompt?: string }) => {
-      requests.push(config ?? {})
-      options.callback(responses.shift() ?? { access_token: 'token-after-refresh', expires_in: 3600 })
-    }),
-  }))
+  const configs: Array<{ login_hint?: string; scope?: string }> = []
+  const initTokenClient = vi.fn((options: { login_hint?: string; scope?: string; callback: (response: { access_token?: string; expires_in?: number; scope?: string }) => void }) => {
+    configs.push(options)
+    return {
+      requestAccessToken: vi.fn((config?: { prompt?: string }) => {
+        requests.push(config ?? {})
+        options.callback(responses.shift() ?? { access_token: 'token-after-refresh', expires_in: 3600 })
+      }),
+    }
+  })
   const script = document.createElement('script')
   script.id = 'google-identity-services'
   script.dataset.loaded = 'true'
   document.head.appendChild(script)
   window.google = { accounts: { oauth2: { initTokenClient } } }
-  return { requests, initTokenClient }
+  return { requests, configs, initTokenClient }
 }
 
 describe('sessão Google Drive', () => {
@@ -31,6 +36,7 @@ describe('sessão Google Drive', () => {
     localStorage.clear()
     document.getElementById('google-identity-services')?.remove()
     window.google = undefined
+    vi.unstubAllGlobals()
   })
 
   it('solicita acesso amplo ao Drive sem incorporar permissões anteriores', async () => {
@@ -81,6 +87,43 @@ describe('sessão Google Drive', () => {
 
     expect(google.requests).toEqual([{ prompt: 'consent' }])
     expect(localStorage.getItem(GOOGLE_CONNECTION_PREFERENCE_KEY)).toBe('1')
+  })
+
+  it('guarda a identidade Google no Perfil sem guardar o token', async () => {
+    await resetDatabaseForTest()
+    const google = installGoogleIdentity()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ sub: 'google-subject-1', email: 'owner@example.com', email_verified: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
+    await connectGoogleDrive('principal')
+
+    expect(await getGoogleProfile('principal')).toMatchObject({ subject: 'google-subject-1', email: 'owner@example.com', emailVerified: true })
+    expect(google.configs[0]).not.toHaveProperty('access_token')
+    expect(await getGoogleProfile('principal')).not.toHaveProperty('token')
+    expect(localStorage.getItem('google-access-token')).toBeNull()
+  })
+
+  it('restaura pelo Perfil local e usa o e-mail salvo como dica da conta', async () => {
+    await resetDatabaseForTest()
+    await saveGoogleProfile({ key: 'account', subject: 'google-subject-1', email: 'owner@example.com', emailVerified: true, connectedAt: '2026-01-01T00:00:00.000Z', lastSeenAt: '2026-01-01T00:00:00.000Z' })
+    const google = installGoogleIdentity()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ sub: 'google-subject-1', email: 'owner@example.com', email_verified: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
+    await expect(restoreGoogleDrive('principal')).resolves.toBe('token-after-refresh')
+
+    expect(google.requests).toEqual([{ prompt: '' }])
+    expect(google.configs[0]).toMatchObject({ login_hint: 'owner@example.com', scope: GOOGLE_DRIVE_SCOPE })
+    expect(await getGoogleProfile('principal')).toMatchObject({ subject: 'google-subject-1', email: 'owner@example.com' })
+  })
+
+  it('não associa silenciosamente outra conta ao Perfil', async () => {
+    await resetDatabaseForTest()
+    const original = { key: 'account' as const, subject: 'google-subject-1', email: 'owner@example.com', emailVerified: true, connectedAt: '2026-01-01T00:00:00.000Z', lastSeenAt: '2026-01-01T00:00:00.000Z' }
+    await saveGoogleProfile(original)
+    installGoogleIdentity()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ sub: 'google-subject-2', email: 'other@example.com', email_verified: true }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+
+    await expect(restoreGoogleDrive('principal')).rejects.toThrow(/não corresponde/i)
+    expect(await getGoogleProfile('principal')).toEqual(original)
   })
 
   it('remove a preferência quando a pessoa desconecta explicitamente', async () => {

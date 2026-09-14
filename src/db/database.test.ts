@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { clearAllLocalData, createProfile, db, deleteProduct, deleteProfile, exportLocalData, getDriveSync, getProfileSummary, getProduct, importLocalData, listMaterialLists, listProducts, renameProfile, replaceAllWithDemo, resetDatabaseForTest, saveDriveSync, saveMaterialList, saveProduct } from './database'
+import { clearAllLocalData, clearGoogleProfile, createProfile, db, deleteProduct, deleteProfile, exportLocalData, getDriveSync, getGoogleProfile, getProfileSummary, getProduct, importLocalData, listMaterialLists, listProducts, renameProfile, replaceAllWithDemo, resetDatabaseForTest, saveDriveSync, saveGoogleProfile, saveMaterialList, saveProduct } from './database'
 import { ProductDependencyError, type ProductRecord } from '../domain/catalog'
 import { DEMO_LIST_ID, DEMO_PRODUCT_CODES } from '../features/demo/demoData'
 
@@ -107,6 +107,20 @@ describe('persistência Dexie', () => {
     await clearAllLocalData()
     expect(await getDriveSync()).toMatchObject({ fileId: 'file-1' })
   })
+
+  it('mantém a identidade Google no Perfil e fora das cópias do catálogo', async () => {
+    const account = { key: 'account' as const, subject: 'google-subject-1', email: 'owner@example.com', emailVerified: true, connectedAt: '2026-01-01T00:00:00.000Z', lastSeenAt: '2026-01-02T00:00:00.000Z' }
+    await saveGoogleProfile(account)
+
+    await importLocalData({ format: 'lista-de-materiais', version: 1, exportedAt: '2026-01-03', products: [rawMaterial('importado')], materialLists: [], materialListEntries: [] })
+    expect(await getGoogleProfile()).toEqual(account)
+    expect(await exportLocalData()).not.toHaveProperty('google')
+
+    await clearAllLocalData()
+    expect(await getGoogleProfile()).toEqual(account)
+    await clearGoogleProfile()
+    expect(await getGoogleProfile()).toBeUndefined()
+  })
 })
 
 describe('isolamento entre Perfis', () => {
@@ -203,5 +217,14 @@ describe('gestión de Perfiles', () => {
 
     await expect(listProducts(b.id)).rejects.toThrow(/não existe/i)
     expect(await listProducts('principal')).toHaveLength(1)
+  })
+
+  it('remove a conta Google junto com o Perfil local', async () => {
+    const b = await createProfile('Bodega Google')
+    await saveGoogleProfile({ key: 'account', subject: 'google-subject-b', email: 'b@example.com', emailVerified: true, connectedAt: '2026-01-01', lastSeenAt: '2026-01-01' }, b.id)
+
+    await deleteProfile(b.id)
+
+    expect(await db.profileGoogleAccounts.where('profileId').equals(b.id).count()).toBe(0)
   })
 })

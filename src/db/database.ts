@@ -52,6 +52,17 @@ export interface DriveSyncRecord {
 }
 interface ScopedDriveSyncRecord extends Omit<DriveSyncRecord, 'profileId'> { profileId?: string }
 
+export interface GoogleProfileRecord {
+  profileId?: string
+  key: 'account'
+  subject: string
+  email: string | null
+  emailVerified: boolean | null
+  connectedAt: string
+  lastSeenAt: string
+}
+interface ScopedGoogleProfileRecord extends Omit<GoogleProfileRecord, 'profileId'> { profileId?: string }
+
 export class MaterialsDatabase extends Dexie {
   profiles!: EntityTable<ProfileRecord, 'id'>
   profileProducts!: Table<ScopedProductRecord, any>
@@ -59,6 +70,7 @@ export class MaterialsDatabase extends Dexie {
   profileMaterialListEntries!: Table<ScopedMaterialListEntry, any>
   profileMeta!: Table<MetaRecord, any>
   profileDriveSync!: Table<ScopedDriveSyncRecord, any>
+  profileGoogleAccounts!: Table<ScopedGoogleProfileRecord, any>
   products!: EntityTable<ProductRecord, 'id'>
   materialLists!: EntityTable<MaterialList, 'id'>
   materialListEntries!: Table<MaterialListEntry, any>
@@ -115,6 +127,10 @@ export class MaterialsDatabase extends Dexie {
       const [productCount, listCount, entryCount, metaCount, driveCount] = await Promise.all([transaction.table('profileProducts').where('profileId').equals(principal.id).count(), transaction.table('profileMaterialLists').where('profileId').equals(principal.id).count(), transaction.table('profileMaterialListEntries').where('profileId').equals(principal.id).count(), transaction.table('profileMeta').where('profileId').equals(principal.id).count(), transaction.table('profileDriveSync').where('profileId').equals(principal.id).count()])
       if (productCount !== legacyProducts.length || listCount !== legacyLists.length || entryCount !== legacyEntries.length || metaCount !== legacyMeta.length || driveCount !== legacyDrive.length) throw new Error('A migração para Perfis locais não conferiu todos os registros legados.')
     })
+    this.version(9).stores({
+      profiles: 'id', profileProducts: '[profileId+id], profileId, [profileId+productCode], [profileId+name], [profileId+category]', profileMaterialLists: '[profileId+id], profileId, [profileId+updatedAt]', profileMaterialListEntries: '[profileId+listId+productCode], profileId, [profileId+listId], [profileId+productCode]', profileMeta: '[profileId+key], profileId', profileDriveSync: '[profileId+key], profileId, fileId', profileGoogleAccounts: '[profileId+key], profileId, subject, email',
+      compatProducts: 'id, productCode, name, category', compatMaterialLists: 'id, name, updatedAt', compatMaterialListEntries: '[listId+productCode], listId, productCode', compatMeta: 'key', compatDriveSync: 'key',
+    })
     this.bindTables()
   }
 
@@ -124,6 +140,7 @@ export class MaterialsDatabase extends Dexie {
     this.profileMaterialListEntries = this.table('profileMaterialListEntries') as Table<ScopedMaterialListEntry, any>
     this.profileMeta = this.table('profileMeta') as Table<MetaRecord, any>
     this.profileDriveSync = this.table('profileDriveSync') as Table<ScopedDriveSyncRecord, any>
+    this.profileGoogleAccounts = this.table('profileGoogleAccounts') as Table<ScopedGoogleProfileRecord, any>
     this.products = this.table('compatProducts') as EntityTable<ProductRecord, 'id'>
     this.materialLists = this.table('compatMaterialLists') as EntityTable<MaterialList, 'id'>
     this.materialListEntries = this.table('compatMaterialListEntries') as Table<MaterialListEntry, any>
@@ -150,7 +167,7 @@ async function resolveProfileId(profileId?: string, createIfMissing = false): Pr
 export async function createProfile(name: string): Promise<ProfileRecord> { await ensureDatabase(); const cleanName = name.trim(); if (!cleanName) throw new Error('Informe um nome para o Perfil.'); const profiles = await db.profiles.toArray(); if (profiles.some((profile) => profileNameKey(profile.name) === profileNameKey(cleanName))) throw new Error('Já existe um Perfil com esse nome.'); const now = new Date().toISOString(); const profile = { id: `profile-${crypto.randomUUID()}`, name: cleanName, createdAt: now, updatedAt: now }; await db.profiles.add(profile); return profile }
 export async function getOrCreateDemoProfile(): Promise<ProfileRecord> { await ensureDatabase(); const existing = (await db.profiles.toArray()).find((profile) => profileNameKey(profile.name) === profileNameKey(DEMO_PROFILE_NAME)); if (existing) return existing; const now = new Date().toISOString(); const profile = { id: `profile-${crypto.randomUUID()}`, name: DEMO_PROFILE_NAME, createdAt: now, updatedAt: now }; await db.profiles.add(profile); return profile }
 export async function renameProfile(profileId: string, name: string): Promise<void> { const id = await resolveProfileId(profileId, true); const cleanName = name.trim(); if (!cleanName) throw new Error('Informe um nome para o Perfil.'); const profiles = await db.profiles.toArray(); if (profiles.some((profile) => profile.id !== id && profileNameKey(profile.name) === profileNameKey(cleanName))) throw new Error('Já existe um Perfil com esse nome.'); await db.profiles.update(id, { name: cleanName, updatedAt: new Date().toISOString() }) }
-export async function deleteProfile(profileId: string): Promise<void> { const id = await resolveProfileId(profileId, true); if (await db.profiles.count() <= 1) throw new Error('O último Perfil local não pode ser excluído.'); await db.transaction('rw', [db.profiles, db.profileProducts, db.profileMaterialLists, db.profileMaterialListEntries, db.profileMeta, db.profileDriveSync, db.products, db.materialLists, db.materialListEntries, db.meta, db.driveSync], async () => { await db.profileMaterialListEntries.where('profileId').equals(id).delete(); await db.profileMaterialLists.where('profileId').equals(id).delete(); await db.profileProducts.where('profileId').equals(id).delete(); await db.profileMeta.where('profileId').equals(id).delete(); await db.profileDriveSync.where('profileId').equals(id).delete(); if (id === PRINCIPAL_PROFILE_ID) { await db.products.clear(); await db.materialLists.clear(); await db.materialListEntries.clear(); await db.meta.clear(); await db.driveSync.clear() } await db.profiles.delete(id) }); if (typeof localStorage !== 'undefined' && localStorage.getItem('lista-de-materiais:profile') === id) await rememberProfile(await getInitialProfileId()) }
+export async function deleteProfile(profileId: string): Promise<void> { const id = await resolveProfileId(profileId, true); if (await db.profiles.count() <= 1) throw new Error('O último Perfil local não pode ser excluído.'); await db.transaction('rw', [db.profiles, db.profileProducts, db.profileMaterialLists, db.profileMaterialListEntries, db.profileMeta, db.profileDriveSync, db.profileGoogleAccounts, db.products, db.materialLists, db.materialListEntries, db.meta, db.driveSync], async () => { await db.profileMaterialListEntries.where('profileId').equals(id).delete(); await db.profileMaterialLists.where('profileId').equals(id).delete(); await db.profileProducts.where('profileId').equals(id).delete(); await db.profileMeta.where('profileId').equals(id).delete(); await db.profileDriveSync.where('profileId').equals(id).delete(); await db.profileGoogleAccounts.where('profileId').equals(id).delete(); if (id === PRINCIPAL_PROFILE_ID) { await db.products.clear(); await db.materialLists.clear(); await db.materialListEntries.clear(); await db.meta.clear(); await db.driveSync.clear() } await db.profiles.delete(id) }); if (typeof localStorage !== 'undefined' && localStorage.getItem('lista-de-materiais:profile') === id) await rememberProfile(await getInitialProfileId()) }
 
 function stripProfile<T extends { profileId?: string }>(record: T): Omit<T, 'profileId'> { const { profileId: _profileId, ...publicRecord } = record; return publicRecord }
 async function listProfileProducts(id: string): Promise<ProductRecord[]> { return (await db.profileProducts.where('profileId').equals(id).toArray()).map(stripProfile) }
@@ -178,4 +195,7 @@ export async function deleteMaterialList(listId: string, profileId?: string): Pr
 export async function getDriveSync(profileId?: string): Promise<DriveSyncRecord | undefined> { const id = await resolveProfileId(profileId); const record = await db.profileDriveSync.get([id, 'active']); if (record) return stripProfile(record); return id === PRINCIPAL_PROFILE_ID ? db.driveSync.get('active') : undefined }
 export async function saveDriveSync(record: DriveSyncRecord, profileId?: string): Promise<void> { const id = await resolveProfileId(profileId ?? record.profileId, true); const duplicate = await db.profileDriveSync.where('fileId').equals(record.fileId).filter((item) => item.profileId !== id).first(); if (duplicate?.profileId) throw new Error(`Este arquivo do Drive já está vinculado ao Perfil “${(await db.profiles.get(duplicate.profileId))?.name ?? duplicate.profileId}”.`); const { profileId: _ignored, ...withoutProfile } = record; await db.profileDriveSync.put({ ...withoutProfile, profileId: id }); if (id === PRINCIPAL_PROFILE_ID) await db.driveSync.put(withoutProfile) }
 export async function clearDriveSync(profileId?: string): Promise<void> { const id = await resolveProfileId(profileId, true); await db.profileDriveSync.delete([id, 'active']); if (id === PRINCIPAL_PROFILE_ID) await db.driveSync.delete('active') }
+export async function getGoogleProfile(profileId?: string): Promise<GoogleProfileRecord | undefined> { const id = await resolveProfileId(profileId); const record = await db.profileGoogleAccounts.get([id, 'account']); return record ? stripProfile(record) : undefined }
+export async function saveGoogleProfile(record: GoogleProfileRecord, profileId?: string): Promise<void> { const id = await resolveProfileId(profileId ?? record.profileId, true); const { profileId: _ignored, ...withoutProfile } = record; await db.profileGoogleAccounts.put({ ...withoutProfile, profileId: id }) }
+export async function clearGoogleProfile(profileId?: string): Promise<void> { const id = await resolveProfileId(profileId, true); await db.profileGoogleAccounts.delete([id, 'account']) }
 export async function resetDatabaseForTest(): Promise<void> { await db.delete(); await db.open(); db.bindTables(); await ensureDatabase(); if (typeof localStorage !== 'undefined') localStorage.removeItem('lista-de-materiais:profile') }
